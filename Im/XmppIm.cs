@@ -53,6 +53,11 @@ namespace Sharp.Xmpp.Im
             }
         }
 
+        public string ServerName
+        {
+            get;set;
+        }
+
         /// <summary>
         /// The port number of the XMPP service of the server.
         /// </summary>
@@ -298,7 +303,7 @@ namespace Sharp.Xmpp.Im
         /// parameter is the empty string.</exception>
         /// <exception cref="ArgumentOutOfRangeException">The value of the port parameter
         /// is not a valid port number.</exception>
-        public XmppIm(string hostname, string username, string password,
+        public XmppIm(string hostname, string username, string password, 
             int port = 5222, bool tls = true, RemoteCertificateValidationCallback validate = null)
         {
             core = new XmppCore(hostname, username, password, port, tls, validate);
@@ -1522,8 +1527,13 @@ namespace Sharp.Xmpp.Im
         /// </remarks>
         private void EstablishSession()
         {
-            Iq ret = IqRequest(IqType.Set, Hostname, null,
-                Xml.Element("session", "urn:ietf:params:xml:ns:xmpp-session"));
+            //set host name unless servername is set
+            Iq ret;
+            if(string.IsNullOrEmpty(this.ServerName))
+                ret = IqRequest(IqType.Set, Hostname, null, Xml.Element("session", "urn:ietf:params:xml:ns:xmpp-session"));
+            else
+                ret = IqRequest(IqType.Set, this.ServerName, null, Xml.Element("session", "urn:ietf:params:xml:ns:xmpp-session"));
+
             if (ret.Type == IqType.Error)
                 throw Util.ExceptionFromError(ret, "Session establishment failed for Hostname: " + Hostname);
         }
