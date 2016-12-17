@@ -86,7 +86,7 @@ namespace Sharp.Xmpp.Extensions
                 return true;
             }
             
-            if (stanza.Subject != null)
+            if (!String.IsNullOrWhiteSpace(stanza.Subject))
             {
                 // Subject change
                 SubjectChanged.Raise(this, new Im.MessageEventArgs(stanza.From, stanza));

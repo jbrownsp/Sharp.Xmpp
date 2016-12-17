@@ -170,7 +170,7 @@ namespace Sharp.Xmpp.Im
 
                     foreach(XmlElement child in bare.ChildNodes)
                     {
-                        string v = child.GetAttribute("to");
+                        string v = child.GetAttributeNode("jid").Value;
                         if (!String.IsNullOrWhiteSpace(v))
                             addresses.Add(new Jid(v));
                     }
@@ -257,6 +257,7 @@ namespace Sharp.Xmpp.Im
         /// <param name="to">The JID of the intended recipient.</param>
         /// <param name="body">The content of the message.</param>
         /// <param name="subject">The subject of the message.</param>
+        /// <param name="additionalAddresses">The XEP-0033 of the message.</param>
         /// <param name="thread">The conversation thread this message belongs to.</param>
         /// <param name="type">The type of the message. Can be one of the values from
         /// the MessagType enumeration.</param>
@@ -290,6 +291,7 @@ namespace Sharp.Xmpp.Im
         /// <param name="subjects">A dictionary of message subjects. The dictionary
         /// keys denote the languages of the message subjects and must be valid
         /// ISO 2 letter language codes.</param>
+        /// <param name="additionalAddresses">The XEP-0033 of the message.</param>
         /// <param name="thread">The conversation thread this message belongs to.</param>
         /// <param name="type">The type of the message. Can be one of the values from
         /// the MessagType enumeration.</param>
