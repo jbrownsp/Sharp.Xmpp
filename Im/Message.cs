@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Xml;
 
 namespace Sharp.Xmpp.Im
@@ -11,6 +12,8 @@ namespace Sharp.Xmpp.Im
     /// </summary>
     public class Message : Core.Message
     {
+
+        private List<Jid> addresses;
         /// <summary>
         /// The type of the message stanza.
         /// </summary>
@@ -153,6 +156,72 @@ namespace Sharp.Xmpp.Im
         }
 
         /// <summary>
+        /// The addresses of the message.
+        /// </summary>
+        public List<Jid> Addresses
+        {
+            get
+            {
+                XmlElement bare = GetBare("addresses");
+                if(bare != null)
+                {
+                    if (addresses == null)
+                        addresses = new List<Jid>();
+
+                    foreach(XmlElement child in bare.ChildNodes)
+                    {
+                        string v = child.GetAttribute("to");
+                        if (!String.IsNullOrWhiteSpace(v))
+                            addresses.Add(new Jid(v));
+                    }
+                }
+
+                return addresses;
+                //if (bare != null)
+                //    return bare.InnerText;
+                //string k = AlternateAddresses.Keys.FirstOrDefault();
+                //return k != null ? AlternateAddresses[k] : null;
+            }
+
+            set
+            {
+                XmlElement bare = GetBare("addresses");
+                if (bare != null)
+                {
+                    if (value == null)
+                        element.RemoveChild(bare);
+                    else
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        foreach(Jid jid in value)
+                        {
+                            sb.Append(jid.ToString());
+                        }
+                        bare.InnerXml = sb.ToString();
+                        //bare.InnerText = value;
+                    }
+                        
+                }
+                else
+                {
+                    if (value != null)
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        foreach (Jid jid in value)
+                        {
+                            sb.Append(String.Format("<address type='to' jid='{0}' />", jid.ToString()));
+                        }
+
+                        XmlElement addressXml = Xml.Element("addresses").Text(sb.ToString());
+                        addressXml.SetAttribute("xmlns", "http://jabber.org/protocol/address");
+
+                        element.Child(addressXml);
+                    }    
+                }
+            }
+        }
+
+        /// <summary>
         /// A dictionary of alternate forms of the message subjects. The keys of the
         /// dictionary denote ISO 2 language codes.
         /// </summary>
@@ -173,6 +242,16 @@ namespace Sharp.Xmpp.Im
         }
 
         /// <summary>
+        /// A dictionary of alternate forms of the message addresses. The keys of the
+        /// dictionary denote ISO 2 language codes.
+        /// </summary>
+        public IDictionary<string, string> AlternateAddresses
+        {
+            get;
+            private set;
+        }
+
+        /// <summary>
         /// Initializes a new instance of the Message class.
         /// </summary>
         /// <param name="to">The JID of the intended recipient.</param>
@@ -185,17 +264,20 @@ namespace Sharp.Xmpp.Im
         /// the stanza.</param>
         /// <exception cref="ArgumentNullException">The to parameter is null.</exception>
         /// <exception cref="ArgumentException">The body parameter is the empty string.</exception>
-        public Message(Jid to, string body = null, string subject = null, string thread = null,
+        public Message(Jid to, string body = null, string subject = null, List<Jid> additionalAddresses = null, string thread = null,
             MessageType type = MessageType.Normal, CultureInfo language = null)
             : base(to, null, null, null, language)
         {
             to.ThrowIfNull("to");
             AlternateSubjects = new XmlDictionary(element, "subject", "xml:lang");
             AlternateBodies = new XmlDictionary(element, "body", "xml:lang");
+            AlternateAddresses = new XmlDictionary(element, "addresses", "xml:lang");
             Type = type;
             Body = body;
             Subject = subject;
             Thread = thread;
+            Addresses = additionalAddresses;
+
         }
 
         /// <summary>
@@ -216,7 +298,7 @@ namespace Sharp.Xmpp.Im
         /// <exception cref="ArgumentNullException">The to parametr or the bodies
         /// parameter is null.</exception>
         public Message(Jid to, IDictionary<string, string> bodies,
-            IDictionary<string, string> subjects = null, string thread = null,
+            IDictionary<string, string> subjects = null, List<Jid> additionalAddresses = null, string thread = null,
             MessageType type = MessageType.Normal, CultureInfo language = null)
             : base(to, null, null, null, language)
         {
@@ -224,6 +306,7 @@ namespace Sharp.Xmpp.Im
             bodies.ThrowIfNull("bodies");
             AlternateSubjects = new XmlDictionary(element, "subject", "xml:lang");
             AlternateBodies = new XmlDictionary(element, "body", "xml:lang");
+            AlternateAddresses = new XmlDictionary(element, "addresses", "xml:lang");
             Type = type;
             foreach (var pair in bodies)
                 AlternateBodies.Add(pair.Key, pair.Value);
@@ -233,6 +316,7 @@ namespace Sharp.Xmpp.Im
                     AlternateSubjects.Add(pair.Key, pair.Value);
             }
             Thread = thread;
+            Addresses = additionalAddresses;
         }
 
         /// <summary>
@@ -251,6 +335,7 @@ namespace Sharp.Xmpp.Im
             element = message.Data;
             AlternateSubjects = new XmlDictionary(element, "subject", "xml:lang");
             AlternateBodies = new XmlDictionary(element, "body", "xml:lang");
+            AlternateAddresses = new XmlDictionary(element, "addresses", "xml:lang");
         }
 
         /// <summary>

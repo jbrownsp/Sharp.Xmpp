@@ -426,6 +426,7 @@ namespace Sharp.Xmpp.Im
         /// <param name="to">The JID of the intended recipient.</param>
         /// <param name="body">The content of the message.</param>
         /// <param name="subject">The subject of the message.</param>
+        /// <param name="additionalAddresses">Any additional address to send to XEP-0033.</param>
         /// <param name="thread">The conversation thread the message belongs to.</param>
         /// <param name="type">The type of the message. Can be one of the values from
         /// the MessagType enumeration.</param>
@@ -442,14 +443,14 @@ namespace Sharp.Xmpp.Im
         /// the XMPP server.</exception>
         /// <exception cref="ObjectDisposedException">The XmppIm object has been
         /// disposed.</exception>
-        public void SendMessage(Jid to, string body, string subject = null,
+        public void SendMessage(Jid to, string body, string subject = null, List<Jid> additionalAddresses = null,
             string thread = null, MessageType type = MessageType.Normal,
             CultureInfo language = null)
         {
             AssertValid();
             to.ThrowIfNull("to");
             body.ThrowIfNullOrEmpty("body");
-            Message m = new Message(to, body, subject, thread, type, language);
+            Message m = new Message(to, body, subject, additionalAddresses, thread, type, language);
             SendMessage(m);
         }
 
@@ -478,13 +479,13 @@ namespace Sharp.Xmpp.Im
         /// <exception cref="ObjectDisposedException">The XmppIm object has been
         /// disposed.</exception>
         public void SendMessage(Jid to, IDictionary<string, string> bodies,
-            IDictionary<string, string> subjects = null, string thread = null,
+            IDictionary<string, string> subjects = null, string thread = null, List<Jid> additionalAddresses = null,
             MessageType type = MessageType.Normal, CultureInfo language = null)
         {
             AssertValid();
             to.ThrowIfNull("to");
             bodies.ThrowIfNull("bodies");
-            Message m = new Message(to, bodies, subjects, thread, type, language);
+            Message m = new Message(to, bodies, subjects, additionalAddresses, thread, type, language);
             SendMessage(m);
         }
 

@@ -786,6 +786,7 @@ namespace Sharp.Xmpp.Client
         /// <param name="to">The JID of the intended recipient.</param>
         /// <param name="body">The content of the message.</param>
         /// <param name="subject">The subject of the message.</param>
+        /// <param name="additionalAddresses">Any additional address to send to XEP-0033.</param>
         /// <param name="thread">The conversation thread the message belongs to.</param>
         /// <param name="type">The type of the message. Can be one of the values from
         /// the MessagType enumeration.</param>
@@ -803,14 +804,14 @@ namespace Sharp.Xmpp.Client
         /// <exception cref="ObjectDisposedException">The XmppClient object has been
         /// disposed.</exception>
         /// <include file='Examples.xml' path='S22/Xmpp/Client/XmppClient[@name="SendMessage-1"]/*'/>
-        public void SendMessage(Jid to, string body, string subject = null,
+        public void SendMessage(Jid to, string body, string subject = null, List<Jid> additionalAddresses = null,
             string thread = null, MessageType type = MessageType.Normal,
             CultureInfo language = null)
         {
             AssertValid();
             to.ThrowIfNull("to");
             body.ThrowIfNullOrEmpty("body");
-            im.SendMessage(to, body, subject, thread, type, language);
+            im.SendMessage(to, body, subject, additionalAddresses, thread, type, language);
         }
 
         /// <summary>
@@ -850,7 +851,7 @@ namespace Sharp.Xmpp.Client
             AssertValid();
             to.ThrowIfNull("to");
             bodies.ThrowIfNull("bodies");
-            im.SendMessage(to, bodies, subjects, thread, type, language);
+            im.SendMessage(to, bodies, subjects, thread, null, type, language);
         }
 
         /// <summary>
