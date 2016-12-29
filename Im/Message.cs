@@ -166,21 +166,19 @@ namespace Sharp.Xmpp.Im
                 if(bare != null)
                 {
                     if (addresses == null)
+                    {
                         addresses = new List<Jid>();
 
-                    foreach(XmlElement child in bare.ChildNodes)
-                    {
-                        string v = child.GetAttributeNode("jid").Value;
-                        if (!String.IsNullOrWhiteSpace(v))
-                            addresses.Add(new Jid(v));
+                        foreach (XmlElement child in bare.ChildNodes)
+                        {
+                            string v = child.GetAttributeNode("jid").Value;
+                            if (!String.IsNullOrWhiteSpace(v))
+                                addresses.Add(new Jid(v));
+                        }
                     }
                 }
 
                 return addresses;
-                //if (bare != null)
-                //    return bare.InnerText;
-                //string k = AlternateAddresses.Keys.FirstOrDefault();
-                //return k != null ? AlternateAddresses[k] : null;
             }
 
             set
