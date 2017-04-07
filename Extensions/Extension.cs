@@ -158,6 +158,11 @@
         /// An extension for communicating with multiple users in the same chat instance
         /// (many-to-many chat)
         /// </summary>
-        MultiUserChat
+        MultiUserChat,
+
+        /// <summary>
+        /// An extension for multi-end message and object encrpytion.
+        /// </summary>
+        Omemo
     }
 }

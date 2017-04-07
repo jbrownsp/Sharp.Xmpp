@@ -163,6 +163,11 @@ namespace Sharp.Xmpp.Client
         private MessageCarbons messageCarbons;
 
         /// <summary>
+        /// Providers the OMEMO extension
+        /// </summary>
+        private Omemo omemo;
+
+        /// <summary>
         /// The hostname of the XMPP server to connect to.
         /// </summary>
         public string Hostname
@@ -381,6 +386,32 @@ namespace Sharp.Xmpp.Client
             set
             {
                 groupChat.VoiceRequested = value;
+            }
+        }
+
+        public Guid OmemoDeviceId
+        {
+            get
+            {
+                return omemo.DeviceId;
+            }
+
+            set
+            {
+                omemo.DeviceId = value;
+            }
+        }
+
+        public IOmemoStore OmemoStore
+        {
+            get
+            {
+                return omemo.Store;
+            }
+
+            set
+            {
+                omemo.Store = value;
             }
         }
 
@@ -2036,6 +2067,7 @@ namespace Sharp.Xmpp.Client
             vcardAvatars = im.LoadExtension<VCardAvatars>();
             cusiqextension = im.LoadExtension<CustomIqExtension>();
             groupChat = im.LoadExtension<MultiUserChat>();
+            omemo = im.LoadExtension<Omemo>();
         }
     }
 }
