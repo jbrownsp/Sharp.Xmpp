@@ -1,13 +1,10 @@
 ﻿using Sharp.Xmpp;
-using Sharp.Xmpp.Client;
 using Sharp.Xmpp.Extensions;
-using Sharp.Xmpp.Im;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Xml;
 
 namespace OmemoDemo
 {
@@ -137,8 +134,6 @@ namespace OmemoDemo
             Debug.WriteLine(string.Format("recvd prekey message {0}", Encoding.UTF8.GetString(bobSession.ReadMessage(incomingPreKeyMessage.Message, true))));
             
             // normal messages can now be sent between the sessions
-            var messages = new List<byte[]>();
-
             for (var i = 0; i < 100; i++)
             {
                 OlmSession sender;
@@ -147,7 +142,7 @@ namespace OmemoDemo
                 OlmSession receiver;
                 string receiverName;
 
-                if (true)
+                if (i % 4 == 0)
                 {
                     sender = aliceSession;
                     senderName = "alice";
@@ -155,20 +150,21 @@ namespace OmemoDemo
                     receiver = bobSession;
                     receiverName = "bob";
                 }
-                //else
-                //{
-                //    sender = bobSession;
-                //    senderName = "bob";
+                else
+                {
+                    sender = bobSession;
+                    senderName = "bob";
 
-                //    receiver = aliceSession;
-                //    receiverName = "alice";
-                //}
+                    receiver = aliceSession;
+                    receiverName = "alice";
+                }
 
-                var sent = sender.CreateMessage(Encoding.UTF8.GetBytes($"message {i}"));
-                Debug.WriteLine($"{senderName} => {Convert.ToBase64String(sent)}");
+                var message = $"message {i}";
+                var sent = sender.CreateMessage(Encoding.UTF8.GetBytes(message));
+                Debug.WriteLine($"{senderName} (sent)=> {message}");
 
                 var recvd = Encoding.UTF8.GetString(receiver.ReadMessage(sent));
-                Debug.WriteLine($"{receiverName} <= {recvd}");
+                Debug.WriteLine($"{receiverName} <=(recvd) {recvd}");
             }
 
             Console.WriteLine("Done");

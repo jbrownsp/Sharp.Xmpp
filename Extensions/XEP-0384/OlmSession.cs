@@ -14,12 +14,16 @@ namespace Sharp.Xmpp.Extensions
     public class OlmSession
     {
         private const byte OlmVersion = 0x03;
-
         private readonly OlmSessionState _state;
-
+        
         public OlmSessionState SessionState
         {
             get { return _state; }
+        }
+
+        public bool IsEstablished
+        {
+            get { return _state.TheirRatchetKey != null; }
         }
 
         public OlmSession(OlmSessionState state)
@@ -43,6 +47,17 @@ namespace Sharp.Xmpp.Extensions
 
         public byte[] CreateMessage(byte[] input)
         {
+            if (IsEstablished && (_state.Ratchet || _state.SendChainKey == null))
+            {
+                _state.MyRatchetKey = KeyPair.Generate();
+
+                var keys = OlmUtils.Hkdf(_state.RootKey, OlmUtils.Agreement(_state.TheirRatchetKey, _state.MyRatchetKey.PrivateKey), Encoding.UTF8.GetBytes("OLM_RATCHET"), 64);
+                _state.RootKey = keys.Take(32).ToArray();
+                _state.SendChainKey = keys.Skip(32).ToArray();
+                _state.SendChainIndex = 0;
+                _state.Ratchet = false;
+            }
+
             var messageKey = ComputeMessageKey(_state.SendChainKey);
 
             // Compute aes key/ic, and hmac key
@@ -94,9 +109,14 @@ namespace Sharp.Xmpp.Extensions
             var message = OlmMessage.Deserialize(input.Take(input.Length - 8).ToArray());
             var hmac = input.Skip(input.Length - 8).ToArray();
 
-            if (!prekey && !message.RatchetKey.SequenceEqual(_state.TheirRatchetKey))
+            // non prekey messages with new ratchet keys require us to compute new keys
+            if (!prekey && (_state.TheirRatchetKey == null || !message.RatchetKey.SequenceEqual(_state.TheirRatchetKey)))
             {
-                // todo recompute root and chain
+                // Ri∥ Ci, 0 = HKDF(Ri − 1, ECDH(Ti − 1, Ti), "OLM_RATCHET", 64)
+                var keys = OlmUtils.Hkdf(_state.RootKey, OlmUtils.Agreement(message.RatchetKey, _state.MyRatchetKey.PrivateKey), Encoding.UTF8.GetBytes("OLM_RATCHET"), 64);
+                _state.RootKey = keys.Take(32).ToArray();
+                _state.RecvChainKey = keys.Skip(32).ToArray();
+                _state.RecvChainIndex = 0;
                 _state.TheirRatchetKey = message.RatchetKey;
                 _state.Ratchet = true;
             }
