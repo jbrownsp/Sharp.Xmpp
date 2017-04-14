@@ -210,6 +210,7 @@
     <Compile Include="Extensions\XEP-0231\BobData.cs" />
     <Compile Include="Extensions\XEP-0279\ServerIpCheck.cs" />
     <Compile Include="Extensions\XEP-0280\MessageCarbons.cs" />
+    <Compile Include="Extensions\XEP-0384\OlmPreKeyMessage.cs" />
     <Compile Include="Extensions\XEP-0384\OlmSession.cs" />
     <Compile Include="Extensions\XEP-0384\OlmWriter.cs" />
     <Compile Include="Extensions\XEP-0384\OmemoBundle.cs" />
@@ -221,6 +222,8 @@
     <Compile Include="Extensions\XEP-0384\Omemo.cs" />
     <Compile Include="Extensions\XEP-0384\OlmMessageTag.cs" />
     <Compile Include="Extensions\XEP-0384\OlmSessionState.cs" />
+    <Compile Include="Extensions\XEP-0384\OmemoHeader.cs" />
+    <Compile Include="Extensions\XEP-0384\OmemoHeaderKey.cs" />
     <Compile Include="Im\SubscriptionRequest.cs" />
     <Compile Include="XmppDisconnectionException.cs" />
     <Compile Include="XmppExceptions.cs" />

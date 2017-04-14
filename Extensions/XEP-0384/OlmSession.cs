@@ -29,25 +29,16 @@ namespace Sharp.Xmpp.Extensions
 
         public byte[] CreatePreKeyMessage(byte[] input)
         {
-            using (var stream = new MemoryStream())
-            using (var writer = new OlmWriter(stream, Encoding.UTF8))
+            var message = new OlmPreKeyMessage
             {
-                writer.Write(OlmVersion);
+                Version = OlmVersion,
+                OneTimeKey = _state.TheirEphemeralKey,
+                BaseKey = _state.MyEphemeralKey.PublicKey,
+                IdentityKey = _state.MyIdentityKey.PublicKey,
+                Message = CreateMessage(input)
+            };
 
-                writer.WriteOlmTag(OlmMessageTag.OneTimeKey);
-                writer.WriteOlmString(_state.TheirEphemeralKey);
-
-                writer.WriteOlmTag(OlmMessageTag.BaseKey);
-                writer.WriteOlmString(_state.MyEphemeralKey.PublicKey);
-
-                writer.WriteOlmTag(OlmMessageTag.IdentityKey);
-                writer.WriteOlmString(_state.MyIdentityKey.PublicKey);
-
-                writer.WriteOlmTag(OlmMessageTag.Message);
-                writer.WriteOlmString(CreateMessage(input));
-
-                return stream.ToArray();
-            }
+            return message.Serialize();
         }
 
         public byte[] CreateMessage(byte[] input)
@@ -97,16 +88,17 @@ namespace Sharp.Xmpp.Extensions
             }
         }
 
-        public byte[] ReadMessage(byte[] input)
+        public byte[] ReadMessage(byte[] input, bool prekey = false)
         {
             // deserialize buffer - hmac
             var message = OlmMessage.Deserialize(input.Take(input.Length - 8).ToArray());
             var hmac = input.Skip(input.Length - 8).ToArray();
 
-            if (!message.RatchetKey.SequenceEqual(_state.TheirRatchetKey))
+            if (!prekey && !message.RatchetKey.SequenceEqual(_state.TheirRatchetKey))
             {
                 // todo recompute root and chain
                 _state.TheirRatchetKey = message.RatchetKey;
+                _state.Ratchet = true;
             }
 
             while (_state.RecvChainIndex < message.SendChainIndex)
