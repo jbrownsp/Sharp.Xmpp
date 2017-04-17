@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -21,6 +22,8 @@ namespace Sharp.Xmpp.Extensions
 
         public byte[] RecvChainKey { get; set; }
         public int RecvChainIndex { get; set; }
+
+        public IList<OlmSkippedMessageKey> SkippedMessageKeys { get; set; }
 
         public bool Ratchet { get; set; }
 
@@ -59,6 +62,11 @@ namespace Sharp.Xmpp.Extensions
             return sessionState;
         }
 
+        public OlmSessionState()
+        {
+            SkippedMessageKeys = new List<OlmSkippedMessageKey>();
+        }
+
         public void RatchetSendChain()
         {
             SendChainKey = OlmUtils.Hmac(SendChainKey, new byte[] { 0x02 });
@@ -71,5 +79,19 @@ namespace Sharp.Xmpp.Extensions
             ++RecvChainIndex;
         }
 
+        public byte[] ComputeSendChainMessageKey()
+        {
+            return ComputeMessageKey(SendChainKey);
+        }
+
+        public byte[] ComputeRecvChainMessageKey()
+        {
+            return ComputeMessageKey(RecvChainKey);
+        }
+
+        private byte[] ComputeMessageKey(byte[] chainKey)
+        {
+            return OlmUtils.Hmac(chainKey, new byte[] { 0x01 });
+        }
     }
 }

@@ -132,7 +132,9 @@ namespace OmemoDemo
 
             // bob reads the prekey's cipher text
             Debug.WriteLine(string.Format("recvd prekey message {0}", Encoding.UTF8.GetString(bobSession.ReadMessage(incomingPreKeyMessage.Message, true))));
-            
+
+            var messages = new List<Tuple<OlmSession, string, OlmSession, string, byte[]>>();
+
             // normal messages can now be sent between the sessions
             for (var i = 0; i < 100; i++)
             {
@@ -161,14 +163,39 @@ namespace OmemoDemo
 
                 var message = $"message {i}";
                 var sent = sender.CreateMessage(Encoding.UTF8.GetBytes(message));
-                Debug.WriteLine($"{senderName} (sent)=> {message}");
+                messages.Add(new Tuple<OlmSession, string, OlmSession, string, byte[]>(sender, senderName, receiver, receiverName, sent));
+            }
 
-                var recvd = Encoding.UTF8.GetString(receiver.ReadMessage(sent));
-                Debug.WriteLine($"{receiverName} <=(recvd) {recvd}");
+            messages.Shuffle();
+
+            foreach (var message in messages)
+            {
+                Debug.WriteLine(string.Format("{0} => {1} : {2}", message.Item2, message.Item4, Encoding.UTF8.GetString(message.Item3.ReadMessage(message.Item5))));
             }
 
             Console.WriteLine("Done");
             Console.ReadLine();
+        }
+    }
+
+    public static class ListExtensions
+    {
+        public static void Shuffle<T>(this IList<T> list)
+        {
+            if (list.Count <= 1)
+            {
+                return;
+            }
+
+            var random = new Random();
+
+            for (var i = list.Count - 1; i >= 1; --i)
+            {
+                var j = random.Next(0, i + 1);
+                var temp = list[j];
+                list[j] = list[i];
+                list[i] = temp;
+            }
         }
     }
 }

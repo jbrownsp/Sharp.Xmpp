@@ -4,6 +4,12 @@ using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using System.IO;
+using System.Linq;
+using System.Text;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Modes;
+using Org.BouncyCastle.Crypto.Paddings;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -68,6 +74,51 @@ namespace Sharp.Xmpp.Extensions
 
                 return stream.ToArray();
             }
+        }
+
+        public static void ComputeNextRootAndChainKey(byte[] currentRootKey, byte[] publicRatchetKey, byte[] privateRatchetKey, out byte[] nextRootKey, out byte[] nextChainKey)
+        {
+            var buffer = Hkdf(currentRootKey, Agreement(publicRatchetKey, privateRatchetKey), Encoding.UTF8.GetBytes("OLM_RATCHET"), 64);
+            nextRootKey = buffer.Take(32).ToArray();
+            nextChainKey = buffer.Skip(32).ToArray();
+        }
+
+        public static void ComputeCipherAndAuthenticationKeys(byte[] messageKey, out byte[] cipherKey, out byte[] cipherIv, out byte[] hmacKey)
+        {
+            var buffer = Hkdf(new byte[80], messageKey, Encoding.UTF8.GetBytes("OLM_KEYS"), 80);
+            cipherKey = buffer.Take(32).ToArray();
+            hmacKey = buffer.Skip(32).Take(32).ToArray();
+            cipherIv = buffer.Skip(64).ToArray();
+        }
+
+        public static byte[] Encrypt(byte[] key, byte[] iv, byte[] input)
+        {
+            return ExecuteCipher(GetCipher(true, key, iv), input);
+        }
+
+        public static byte[] Decrypt(byte[] key, byte[] iv, byte[] input)
+        {
+            return ExecuteCipher(GetCipher(false, key, iv), input);
+        }
+
+        private static IBufferedCipher GetCipher(bool encrypting, byte[] key, byte[] iv)
+        {
+            var engine = new AesEngine();
+            var cbc = new CbcBlockCipher(engine);
+            var padding = new Pkcs7Padding();
+            var cipher = new PaddedBufferedBlockCipher(cbc, padding);
+            var cipherParams = new ParametersWithIV(new KeyParameter(key), iv);
+            cipher.Init(encrypting, cipherParams);
+
+            return cipher;
+        }
+
+        private static byte[] ExecuteCipher(IBufferedCipher cipher, byte[] input)
+        {
+            var cipherText = new byte[cipher.GetOutputSize(input.Length)];
+            var cipherLength = cipher.ProcessBytes(input, 0, input.Length, cipherText, 0);
+            cipher.DoFinal(cipherText, cipherLength);
+            return cipherText;
         }
     }
 }

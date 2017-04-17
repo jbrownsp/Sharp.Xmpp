@@ -1,10 +1,6 @@
-﻿using Org.BouncyCastle.Crypto.Engines;
-using Org.BouncyCastle.Crypto.Modes;
-using Org.BouncyCastle.Crypto.Paddings;
-using Org.BouncyCastle.Crypto.Parameters;
+﻿using System;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -19,11 +15,6 @@ namespace Sharp.Xmpp.Extensions
         public OlmSessionState SessionState
         {
             get { return _state; }
-        }
-
-        public bool IsEstablished
-        {
-            get { return _state.TheirRatchetKey != null; }
         }
 
         public OlmSession(OlmSessionState state)
@@ -47,39 +38,28 @@ namespace Sharp.Xmpp.Extensions
 
         public byte[] CreateMessage(byte[] input)
         {
-            if (IsEstablished && (_state.Ratchet || _state.SendChainKey == null))
+            // ratchet root
+            if (_state.TheirRatchetKey != null && (_state.Ratchet || _state.SendChainKey == null))
             {
                 _state.MyRatchetKey = KeyPair.Generate();
 
-                var keys = OlmUtils.Hkdf(_state.RootKey, OlmUtils.Agreement(_state.TheirRatchetKey, _state.MyRatchetKey.PrivateKey), Encoding.UTF8.GetBytes("OLM_RATCHET"), 64);
-                _state.RootKey = keys.Take(32).ToArray();
-                _state.SendChainKey = keys.Skip(32).ToArray();
+                byte[] nextRootKey;
+                byte[] nextChainKey;
+
+                OlmUtils.ComputeNextRootAndChainKey(_state.RootKey, _state.TheirRatchetKey, _state.MyRatchetKey.PrivateKey, out nextRootKey, out nextChainKey);
+
+                _state.RootKey = nextRootKey;
+                _state.SendChainKey = nextChainKey;
                 _state.SendChainIndex = 0;
                 _state.Ratchet = false;
             }
 
-            var messageKey = ComputeMessageKey(_state.SendChainKey);
+            byte[] aesKey;
+            byte[] aesIv;
+            byte[] hmacKey;
 
-            // Compute aes key/ic, and hmac key
-            //
-            // HKDF(salt,  IKM,  info,  L)
-            // AES_KEYi, j ∥ HMAC_KEYi, j ∥ AES_IVi, j	 = HKDF(0,  Mi, j, "OLM_KEYS",  80)
-            var buffer = OlmUtils.Hkdf(new byte[80], messageKey, Encoding.UTF8.GetBytes("OLM_KEYS"), 80);
-            var aesKey = buffer.Take(32).ToArray();
-            var hmacKey = buffer.Skip(32).Take(32).ToArray();
-            var aesIv = buffer.Skip(64).ToArray();
-
-            // encrypt input
-            var engine = new AesEngine();
-            var cbc = new CbcBlockCipher(engine);
-            var padding = new Pkcs7Padding();
-            var cipher = new PaddedBufferedBlockCipher(cbc, padding);
-            var cipherParams = new ParametersWithIV(new KeyParameter(aesKey), aesIv);
-            cipher.Init(true, cipherParams);
-
-            var cipherText = new byte[cipher.GetOutputSize(input.Length)];
-            var cipherLength = cipher.ProcessBytes(input, 0, input.Length, cipherText, 0);
-            cipher.DoFinal(cipherText, cipherLength);
+            OlmUtils.ComputeCipherAndAuthenticationKeys(_state.ComputeSendChainMessageKey(), out aesKey, out aesIv, out hmacKey);
+            var cipherText = OlmUtils.Encrypt(aesKey, aesIv, input);
 
             var message = new OlmMessage
             {
@@ -109,13 +89,23 @@ namespace Sharp.Xmpp.Extensions
             var message = OlmMessage.Deserialize(input.Take(input.Length - 8).ToArray());
             var hmac = input.Skip(input.Length - 8).ToArray();
 
-            // non prekey messages with new ratchet keys require us to compute new keys
+            var output = TrySkippedMessageKeys(message.CipherText);
+
+            if (output != null)
+            {
+                return output;
+            }
+
+            // non prekey messages with new ratchet keys require us to compute new root and chain keys
             if (!prekey && (_state.TheirRatchetKey == null || !message.RatchetKey.SequenceEqual(_state.TheirRatchetKey)))
             {
-                // Ri∥ Ci, 0 = HKDF(Ri − 1, ECDH(Ti − 1, Ti), "OLM_RATCHET", 64)
-                var keys = OlmUtils.Hkdf(_state.RootKey, OlmUtils.Agreement(message.RatchetKey, _state.MyRatchetKey.PrivateKey), Encoding.UTF8.GetBytes("OLM_RATCHET"), 64);
-                _state.RootKey = keys.Take(32).ToArray();
-                _state.RecvChainKey = keys.Skip(32).ToArray();
+                byte[] nextRootKey;
+                byte[] nextChainKey;
+
+                OlmUtils.ComputeNextRootAndChainKey(_state.RootKey, message.RatchetKey, _state.MyRatchetKey.PrivateKey, out nextRootKey, out nextChainKey);
+
+                _state.RootKey = nextRootKey;
+                _state.RecvChainKey = nextChainKey;
                 _state.RecvChainIndex = 0;
                 _state.TheirRatchetKey = message.RatchetKey;
                 _state.Ratchet = true;
@@ -124,32 +114,53 @@ namespace Sharp.Xmpp.Extensions
             while (_state.RecvChainIndex < message.SendChainIndex)
             {
                 _state.RatchetReceiveChain();
+
+                if (_state.RecvChainIndex < message.SendChainIndex - 1)
+                {
+                    _state.SkippedMessageKeys.Add(new OlmSkippedMessageKey
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        Key = _state.ComputeRecvChainMessageKey()
+                    });
+                }
             }
 
-            var messageKey = ComputeMessageKey(_state.RecvChainKey);
+            return DecryptWithMessageKey(_state.ComputeRecvChainMessageKey(), message.CipherText);
+        }
 
-            // Compute aes key/ic, and hmac key
-            //
-            // HKDF(salt,  IKM,  info,  L)
-            // AES_KEYi, j ∥ HMAC_KEYi, j ∥ AES_IVi, j	 = HKDF(0,  Mi, j, "OLM_KEYS",  80)
-            var buffer = OlmUtils.Hkdf(new byte[80], messageKey, Encoding.UTF8.GetBytes("OLM_KEYS"), 80);
-            var aesKey = buffer.Take(32).ToArray();
-            var hmacKey = buffer.Skip(32).Take(32).ToArray();
-            var aesIv = buffer.Skip(64).ToArray();
+        private byte[] TrySkippedMessageKeys(byte[] input)
+        {
+            OlmSkippedMessageKey matchingKey = null;
+            byte[] output = null;
 
-            // encrypt input
-            var engine = new AesEngine();
-            var cbc = new CbcBlockCipher(engine);
-            var padding = new Pkcs7Padding();
-            var cipher = new PaddedBufferedBlockCipher(cbc, padding);
-            var cipherParams = new ParametersWithIV(new KeyParameter(aesKey), aesIv);
-            cipher.Init(false, cipherParams);
+            foreach (var key in _state.SkippedMessageKeys)
+            {
+                try
+                {
+                    output = DecryptWithMessageKey(key.Key, input);
+                    matchingKey = key;
+                }
+                catch
+                {
+                    // todo log anything here?
+                }
+            }
 
-            var cipherText = new byte[cipher.GetOutputSize(message.CipherText.Length)];
-            var cipherLength = cipher.ProcessBytes(message.CipherText, 0, message.CipherText.Length, cipherText, 0);
-            cipher.DoFinal(cipherText, cipherLength);
+            if (matchingKey != null)
+            {
+                _state.SkippedMessageKeys.Remove(matchingKey);
+            }
 
-            return cipherText;
+            return output;
+        }
+
+        private byte[] DecryptWithMessageKey(byte[] messageKey, byte[] input)
+        {
+            byte[] aesKey;
+            byte[] aesIv;
+            byte[] hmacKey;
+            OlmUtils.ComputeCipherAndAuthenticationKeys(messageKey, out aesKey, out aesIv, out hmacKey);
+            return OlmUtils.Decrypt(aesKey, aesIv, input);
         }
 
         private byte[] ComputeMessageKey(byte[] chainKey)
