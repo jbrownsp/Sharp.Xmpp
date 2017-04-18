@@ -1,20 +1,26 @@
 ﻿using Sharp.Xmpp;
+using Sharp.Xmpp.Client;
 using Sharp.Xmpp.Extensions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using Sharp.Xmpp.Client;
 
 namespace OmemoDemo
 {
     class InMemoryOmemoStore : IOmemoStore
     {
+        private readonly Guid _currentDeviceId;
+        private readonly OmemoBundle _currentDeviceBundle;
         private readonly Dictionary<Jid, List<Guid>> _devices = new Dictionary<Jid, List<Guid>>();
         private readonly Dictionary<Guid, OmemoBundle> _bundles = new Dictionary<Guid, OmemoBundle>();
         private readonly Dictionary<Guid, OlmSessionState> _sessionState = new Dictionary<Guid, OlmSessionState>();
+
+        public InMemoryOmemoStore(Guid currentDeviceId, OmemoBundle currentDeviceBundle)
+        {
+            _currentDeviceId = currentDeviceId;
+            _currentDeviceBundle = currentDeviceBundle;
+        }
 
         public void SaveDeviceId(Jid jid, Guid deviceId)
         {
@@ -50,6 +56,16 @@ namespace OmemoDemo
         {
             return _sessionState.ContainsKey(deviceId) ? _sessionState[deviceId] : null;
         }
+
+        public Guid GetCurrentDeviceId()
+        {
+            return _currentDeviceId;
+        }
+
+        public OmemoBundle GetCurrentDeviceBundle()
+        {
+            return _currentDeviceBundle;
+        }
     }
 
     class DemoClient
@@ -80,7 +96,6 @@ namespace OmemoDemo
             using (var client = new XmppClient(_server, _username, _password, _serverName))
             {
                 client.OmemoStore = _store;
-                client.OmemoDeviceId = _deviceId;
                 client.Message += (sender, args) => Console.WriteLine($"~[{args.Jid.GetBareJid()}]: {args.Message}");
                 client.Connect();
                 client.Im.RequestSubscription(_recipient);
@@ -108,8 +123,6 @@ namespace OmemoDemo
                         switch (command)
                         {
                             case "b":
-                                client.PublishOmemoDeviceList();
-                                client.PublishOmemoBundles();
                                 break;
 
                             case "s":
@@ -157,9 +170,7 @@ namespace OmemoDemo
                 deviceId = Guid.Parse("{35C8847B-0D95-4016-89BC-98B285D7D27D}");
             }
 
-            var store = new InMemoryOmemoStore();
-            store.SaveDeviceId(new Jid("openfire.local", username), deviceId);
-            store.SaveBundle(deviceId, OmemoBundle.Generate());
+            var store = new InMemoryOmemoStore(deviceId, OmemoBundle.Generate());
             var client = new DemoClient("openfire.local", "openfire.local", username, password, recipient, store, deviceId);
             client.Run();
 
@@ -167,14 +178,12 @@ namespace OmemoDemo
             Debug.Listeners.Add(new ConsoleTraceListener());
 
             // bob will receive first
-            var bobStore = new InMemoryOmemoStore();
             var bobJid = new Jid("openfire.local", "bob");
             var bobDeviceId = Guid.NewGuid();
             var bobBundle = OmemoBundle.Generate();
             
 
             // alice will send first
-            var aliceStore = new InMemoryOmemoStore();
             var aliceJid = new Jid("openfire.local", "alice");
             var aliceDeviceId = Guid.NewGuid();
             var aliceBundle = OmemoBundle.Generate();
@@ -182,25 +191,6 @@ namespace OmemoDemo
 
             // alice picks one of bob's prekeys at random
             var bobEphemeralKey = bobBundle.PreKeys[new Random().Next(0, bobBundle.PreKeys.Count)];
-
-            // alice and bob would publish their information and they would store eachother's device ids and bundles in their own stores
-            aliceStore.SaveDeviceId(bobJid, bobDeviceId);
-            aliceStore.SaveBundle(bobDeviceId, bobBundle);
-
-            bobStore.SaveDeviceId(aliceJid, aliceDeviceId);
-            bobStore.SaveBundle(aliceDeviceId, aliceBundle);
-
-
-            // alice will initiate the session with bob
-            var input = "this is a test message";
-            var recipientJids = new[] { bobJid };
-
-            var header = new OmemoHeader();            
-            
-            foreach (var jid in recipientJids)
-            {
-                
-            }
 
             /*
             // alice calculates the secret
@@ -273,8 +263,6 @@ namespace OmemoDemo
                 var sent = sender.CreateMessage(Encoding.UTF8.GetBytes(message));
                 messages.Add(new Tuple<OlmSession, string, OlmSession, string, byte[]>(sender, senderName, receiver, receiverName, sent));
             }
-
-            messages.Shuffle();
 
             foreach (var message in messages)
             {

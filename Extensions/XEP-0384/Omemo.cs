@@ -22,6 +22,8 @@ namespace Sharp.Xmpp.Extensions
         {
             _pep = im.GetExtension<Pep>();
             _pep.Subscribe("urn:xmpp:omemo:0:devicelist", OnDeviceListUpdated);
+            PublishDeviceList();
+            PublishBundles();
         }
 
         private void OnDeviceListUpdated(Jid jid, XmlElement xmlElement)
@@ -83,13 +85,15 @@ namespace Sharp.Xmpp.Extensions
 
         public string Encrypt(IEnumerable<Jid> recipients, string message)
         {
+            return message; // todo return original message until pubsub works!
+
             var aesKey = "AES_KEY";
             var aesIv = "";
             var payload = "";
 
             var encrypted = Xml.Element("encrypted", "urn:xmpp:omemo:0");
             var header = Xml.Element("header");
-            header.Attr("sid", DeviceId.ToString());
+            header.Attr("sid", Store.GetCurrentDeviceId().ToString());
 
             // iv
             header.Child(Xml.Element("iv").Text(Convert.ToBase64String(Encoding.UTF8.GetBytes(aesIv))));
@@ -107,7 +111,7 @@ namespace Sharp.Xmpp.Extensions
                     // if no existing session exists create session as sender
                     if (sessionState == null)
                     {
-                        var senderBundle = Store.GetBundle(DeviceId);
+                        var senderBundle = Store.GetCurrentDeviceBundle();
                         var recipientBundle = Store.GetBundle(deviceId);
                         
                         if (recipientBundle == null)
@@ -146,8 +150,6 @@ namespace Sharp.Xmpp.Extensions
 
             return encrypted.ToXmlString();
         }
-
-        public Guid DeviceId { get; set; }
 
         public IOmemoStore Store { get; set; }
     }

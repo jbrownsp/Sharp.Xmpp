@@ -2,6 +2,7 @@
 
 namespace Sharp.Xmpp.Extensions
 {
+    [Serializable]
     public class OlmSkippedMessageKey
     {
         public DateTime Timestamp { get; set; }

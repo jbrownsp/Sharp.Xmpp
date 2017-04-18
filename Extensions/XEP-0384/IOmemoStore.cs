@@ -5,6 +5,9 @@ namespace Sharp.Xmpp.Extensions
 {
     public interface IOmemoStore
     {
+        Guid GetCurrentDeviceId();
+        OmemoBundle GetCurrentDeviceBundle();
+
         void SaveDeviceId(Jid jid, Guid deviceId);
         IList<Guid> GetDeviceIds(Jid jid);
 

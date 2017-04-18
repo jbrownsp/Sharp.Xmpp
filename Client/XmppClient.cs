@@ -389,19 +389,6 @@ namespace Sharp.Xmpp.Client
             }
         }
 
-        public Guid OmemoDeviceId
-        {
-            get
-            {
-                return omemo.DeviceId;
-            }
-
-            set
-            {
-                omemo.DeviceId = value;
-            }
-        }
-
         public IOmemoStore OmemoStore
         {
             get

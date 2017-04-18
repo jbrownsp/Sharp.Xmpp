@@ -5,6 +5,7 @@ using System.Xml;
 
 namespace Sharp.Xmpp.Extensions
 {
+    [Serializable]
     public class OmemoBundle
     {
         public OmemoBundle()

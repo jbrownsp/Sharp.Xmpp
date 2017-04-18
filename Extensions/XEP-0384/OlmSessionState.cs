@@ -6,6 +6,7 @@ using System.Text;
 
 namespace Sharp.Xmpp.Extensions
 {
+    [Serializable]
     public class OlmSessionState
     {
         public KeyPair MyIdentityKey { get; set; }
