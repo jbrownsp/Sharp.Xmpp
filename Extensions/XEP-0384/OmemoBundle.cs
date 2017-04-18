@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -21,7 +22,7 @@ namespace Sharp.Xmpp.Extensions
             bundle.IdentityKey = KeyPair.Generate();
             bundle.DeviceId = Guid.NewGuid();
 
-            foreach (var i in Enumerable.Range(0, 1))
+            foreach (var i in Enumerable.Range(0, 100))
             {
                 bundle.PreKeys.Add(KeyPair.Generate());
             }
@@ -29,7 +30,7 @@ namespace Sharp.Xmpp.Extensions
             return bundle;
         }
 
-        public string ToXmlString()
+        public XmlElement ToXml()
         {
             var bundle = Xml.Element("bundle", Omemo.Namespace);
             bundle.Child(Xml.Element("identityKey").Text(Convert.ToBase64String(IdentityKey.PublicKey)));
@@ -45,7 +46,7 @@ namespace Sharp.Xmpp.Extensions
 
             bundle.Child(prekeys);
 
-            return bundle.ToXmlString();
+            return bundle;
         }
     }
 }

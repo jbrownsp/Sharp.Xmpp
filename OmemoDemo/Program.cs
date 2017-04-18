@@ -1,10 +1,12 @@
 ﻿using Sharp.Xmpp;
 using Sharp.Xmpp.Extensions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using Sharp.Xmpp.Client;
 
 namespace OmemoDemo
 {
@@ -50,10 +52,118 @@ namespace OmemoDemo
         }
     }
 
+    class DemoClient
+    {
+        private string _server;
+        private string _serverName;
+        private string _username;
+        private string _password;
+        private Jid _recipient;
+        private readonly IOmemoStore _store;
+        private Guid _deviceId;
+
+        public BlockingCollection<string> Queue { get; } = new BlockingCollection<string>(new ConcurrentQueue<string>());
+
+        public DemoClient(string server, string serverName, string username, string password, Jid recipient, IOmemoStore store, Guid deviceId)
+        {
+            _server = server;
+            _serverName = serverName;
+            _username = username;
+            _password = password;
+            _recipient = recipient;
+            _store = store;
+            _deviceId = deviceId;
+        }
+
+        public void Run()
+        {
+            using (var client = new XmppClient(_server, _username, _password, _serverName))
+            {
+                client.OmemoStore = _store;
+                client.OmemoDeviceId = _deviceId;
+                client.Message += (sender, args) => Console.WriteLine($"~[{args.Jid.GetBareJid()}]: {args.Message}");
+                client.Connect();
+                client.Im.RequestSubscription(_recipient);
+                client.PublishOmemoDeviceList();
+                client.PublishOmemoBundles();
+
+                while (true)
+                {
+                    Console.Write($"[{_username}] > ");
+
+                    var input = Console.ReadLine();
+
+                    if (string.IsNullOrWhiteSpace(input))
+                    {
+                        continue;
+                    }
+
+                    var quit = false;
+
+                    try
+                    {
+                        var tokens = input.Split(new[] { ' ' }, 2);
+                        var command = tokens[0];
+
+                        switch (command)
+                        {
+                            case "b":
+                                client.PublishOmemoDeviceList();
+                                client.PublishOmemoBundles();
+                                break;
+
+                            case "s":
+                                client.SendMessage(_recipient, tokens[1], encrypt: true);
+                                break;
+
+                            case "q":
+                                quit = true;
+                                break;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"[{_username}] error parsing input -- {e}");
+                    }
+
+                    if (quit)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     class Program
     {
         static void Main(string[] args)
         {
+            string username;
+            string password;
+            Jid recipient;
+            Guid deviceId;
+
+            if (args[0] == "alice")
+            {
+                username = password = "alice";
+                recipient = new Jid("bob@openfire.local");
+                deviceId = Guid.Parse("{F806A73E-7B9A-49C1-9670-BC79A14F7E94}");
+            }
+            else
+            {
+                username = password = "bob";
+                recipient = new Jid("alice@openfire.local");
+                deviceId = Guid.Parse("{35C8847B-0D95-4016-89BC-98B285D7D27D}");
+            }
+
+            var store = new InMemoryOmemoStore();
+            store.SaveDeviceId(new Jid("openfire.local", username), deviceId);
+            store.SaveBundle(deviceId, OmemoBundle.Generate());
+            var client = new DemoClient("openfire.local", "openfire.local", username, password, recipient, store, deviceId);
+            client.Run();
+
+            return;
             Debug.Listeners.Add(new ConsoleTraceListener());
 
             // bob will receive first

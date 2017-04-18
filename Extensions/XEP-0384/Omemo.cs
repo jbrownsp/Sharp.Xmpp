@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Xml;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -20,6 +21,17 @@ namespace Sharp.Xmpp.Extensions
         public override void Initialize()
         {
             _pep = im.GetExtension<Pep>();
+            _pep.Subscribe("urn:xmpp:omemo:0:devicelist", OnDeviceListUpdated);
+        }
+
+        private void OnDeviceListUpdated(Jid jid, XmlElement xmlElement)
+        {
+            var devices = xmlElement.SelectNodes("./device");
+
+            foreach (var device in devices.Cast<XmlElement>())
+            {
+                Store.SaveDeviceId(jid.GetBareJid(), Guid.Parse(device.GetAttribute("id")));
+            }
         }
 
         public override IEnumerable<string> Namespaces
@@ -44,7 +56,32 @@ namespace Sharp.Xmpp.Extensions
             return false;
         }
 
-        public void SendMessage(IEnumerable<Jid> recipients, string message)
+        public void PublishDeviceList()
+        {
+            var list = Xml.Element("list", "urn:xmpp:omemo:0");
+
+            var deviceIds = Store.GetDeviceIds(im.Jid.GetBareJid());
+
+            foreach (var deviceId in deviceIds)
+            {
+                list.Child(Xml.Element("device").Attr("id", deviceId.ToString()));
+            }
+
+            _pep.Publish("urn:xmpp:omemo:0:devicelist", null, list);
+        }
+
+        public void PublishBundles()
+        {
+            var deviceIds = Store.GetDeviceIds(im.Jid.GetBareJid());
+
+            foreach (var deviceId in deviceIds)
+            {
+                var bundle = Store.GetBundle(deviceId);
+                _pep.Publish("urn:xmpp:omemo:0:bundles:" + deviceId, null, bundle.ToXml());
+            }
+        }
+
+        public string Encrypt(IEnumerable<Jid> recipients, string message)
         {
             var aesKey = "AES_KEY";
             var aesIv = "";
@@ -107,7 +144,7 @@ namespace Sharp.Xmpp.Extensions
 
             encrypted.Child(Xml.Element("payload").Text(Convert.ToBase64String(Encoding.UTF8.GetBytes(message))));
 
-            im.SendMessage(recipients.First(), encrypted.ToString());
+            return encrypted.ToXmlString();
         }
 
         public Guid DeviceId { get; set; }

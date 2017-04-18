@@ -837,12 +837,32 @@ namespace Sharp.Xmpp.Client
         /// <include file='Examples.xml' path='S22/Xmpp/Client/XmppClient[@name="SendMessage-1"]/*'/>
         public void SendMessage(Jid to, string body, string subject = null, List<Jid> additionalAddresses = null,
             string thread = null, MessageType type = MessageType.Normal,
-            CultureInfo language = null)
+            CultureInfo language = null, bool encrypt = false)
         {
             AssertValid();
             to.ThrowIfNull("to");
             body.ThrowIfNullOrEmpty("body");
-            im.SendMessage(to, body, subject, additionalAddresses, thread, type, language);
+
+            string payload;
+
+            if (encrypt)
+            {
+                var recipients = new List<Jid>();
+                recipients.Add(to);
+
+                if (additionalAddresses != null)
+                {
+                    recipients.AddRange(additionalAddresses);
+                }
+
+                payload = omemo.Encrypt(recipients, body);
+            }
+            else
+            {
+                payload = body;
+            }
+
+            im.SendMessage(to, payload, subject, additionalAddresses, thread, type, language);
         }
 
         /// <summary>
@@ -1967,6 +1987,16 @@ namespace Sharp.Xmpp.Client
         public void RequestVoice(Jid chatRoom)
         {
             groupChat.RequestPrivilige(chatRoom, Role.Participant);
+        }
+
+        public void PublishOmemoDeviceList()
+        {
+            omemo.PublishDeviceList();
+        }
+
+        public void PublishOmemoBundles()
+        {
+            omemo.PublishBundles();
         }
 
         /// <summary>
