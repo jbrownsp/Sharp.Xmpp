@@ -55,7 +55,7 @@ namespace Sharp.Xmpp.Extensions
             header.Attr("sid", DeviceId.ToString());
 
             // iv
-            header.Child(Xml.Element("iv").Text(Convert.ToBase64String(Encoding.ASCII.GetBytes(aesIv))));
+            header.Child(Xml.Element("iv").Text(Convert.ToBase64String(Encoding.UTF8.GetBytes(aesIv))));
 
             // keys
             foreach (var recipient in recipients)
@@ -79,7 +79,10 @@ namespace Sharp.Xmpp.Extensions
                             continue;
                         }
 
-                        //sessionState = OmemoSessionState.InitializeAsSender(senderBundle.IdentityKey, senderBundle.IdentityKey, recipientBundle.IdentityKey.PublicKey, recipientBundle.PreKeys.First().PublicKey); // todo pick prekey at random
+                        var senderEphemeralKey = KeyPair.Generate();
+                        var recipientEphemeralKey = recipientBundle.PreKeys[new Random().Next(0, recipientBundle.PreKeys.Count)];
+                        var secret = OlmUtils.SenderTripleDh(senderBundle.IdentityKey.PrivateKey, senderEphemeralKey.PrivateKey, recipientBundle.IdentityKey.PublicKey, recipientEphemeralKey.PublicKey);
+                        sessionState = OlmSessionState.InitializeAsSender(secret, senderBundle.IdentityKey, senderEphemeralKey, recipientEphemeralKey.PublicKey);
                         Store.SaveSession(deviceId, sessionState);
                         prekey = true;
                     }
@@ -91,11 +94,11 @@ namespace Sharp.Xmpp.Extensions
                     if (prekey)
                     {
                         key.Attr("prekey", "true");
-                        key.Text(Convert.ToBase64String(session.CreatePreKeyMessage(Encoding.ASCII.GetBytes(aesKey))));
+                        key.Text(Convert.ToBase64String(session.CreatePreKeyMessage(Encoding.UTF8.GetBytes(aesKey))));
                     }
                     else
                     {
-                        key.Text(Convert.ToBase64String(session.CreateMessage(Encoding.ASCII.GetBytes(aesKey))));
+                        key.Text(Convert.ToBase64String(session.CreateMessage(Encoding.UTF8.GetBytes(aesKey))));
                     }
 
                     header.Child(key);

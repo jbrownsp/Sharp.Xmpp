@@ -162,10 +162,5 @@ namespace Sharp.Xmpp.Extensions
             OlmUtils.ComputeCipherAndAuthenticationKeys(messageKey, out aesKey, out aesIv, out hmacKey);
             return OlmUtils.Decrypt(aesKey, aesIv, input);
         }
-
-        private byte[] ComputeMessageKey(byte[] chainKey)
-        {
-            return OlmUtils.Hmac(chainKey, new byte[] { 0x01 });
-        }
     }
 }

@@ -73,7 +73,6 @@ namespace OmemoDemo
             // alice picks one of bob's prekeys at random
             var bobEphemeralKey = bobBundle.PreKeys[new Random().Next(0, bobBundle.PreKeys.Count)];
 
-            /*
             // alice and bob would publish their information and they would store eachother's device ids and bundles in their own stores
             aliceStore.SaveDeviceId(bobJid, bobDeviceId);
             aliceStore.SaveBundle(bobDeviceId, bobBundle);
@@ -86,15 +85,14 @@ namespace OmemoDemo
             var input = "this is a test message";
             var recipientJids = new[] { bobJid };
 
-            var header = new OmemoHeader();
-            
+            var header = new OmemoHeader();            
             
             foreach (var jid in recipientJids)
             {
                 
             }
-            */
 
+            /*
             // alice calculates the secret
             var aliceSecret = OlmUtils.SenderTripleDh(aliceBundle.IdentityKey.PrivateKey, aliceEphemeralKey.PrivateKey, bobBundle.IdentityKey.PublicKey, bobEphemeralKey.PublicKey);
             Debug.WriteLine(string.Format("aliceSecret = {0}", Convert.ToBase64String(aliceSecret)));
@@ -172,6 +170,7 @@ namespace OmemoDemo
             {
                 Debug.WriteLine(string.Format("{0} => {1} : {2}", message.Item2, message.Item4, Encoding.UTF8.GetString(message.Item3.ReadMessage(message.Item5))));
             }
+            */
 
             Console.WriteLine("Done");
             Console.ReadLine();
