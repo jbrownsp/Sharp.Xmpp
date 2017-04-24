@@ -102,6 +102,7 @@ namespace Sharp.Xmpp.Extensions
         /// <param name="stanza">The stanza which is being sent.</param>
         public void Output(Presence stanza)
         {
+            return;  // todo jb breaking this
             var c = Xml.Element("c", "http://jabber.org/protocol/caps")
                 .Attr("hash", "sha-1")
                 .Attr("node", nodeUri)

@@ -11,8 +11,8 @@ namespace Sharp.Xmpp.Extensions
     internal class Omemo : XmppExtension, IInputFilter<Message>
     {
         public static string Namespace = "urn:xmpp:omemo:0";
-
         private Pep _pep;
+        private object _lock = new object();
         
         public Omemo(XmppIm im) : base(im)
         {
@@ -21,18 +21,65 @@ namespace Sharp.Xmpp.Extensions
         public override void Initialize()
         {
             _pep = im.GetExtension<Pep>();
-            _pep.Subscribe("urn:xmpp:omemo:0:devicelist", OnDeviceListUpdated);
-            PublishDeviceList();
-            PublishBundles();
+            _pep.Subscribe(Namespace + ":devicelist", OnDeviceListUpdated);
+            _pep.Subscribe(Namespace + ":bundles:(.*)", OnBundleUpdated, true);
         }
 
-        private void OnDeviceListUpdated(Jid jid, XmlElement xmlElement)
+        private void OnDeviceListUpdated(Jid jid, XmlElement el)
         {
-            var devices = xmlElement.SelectNodes("./device");
+            Debug.WriteLine(string.Format("received device list update from {0}", jid));
 
-            foreach (var device in devices.Cast<XmlElement>())
+            try
             {
-                Store.SaveDeviceId(jid.GetBareJid(), Guid.Parse(device.GetAttribute("id")));
+                var namespaceManager = new XmlNamespaceManager(el.OwnerDocument.NameTable);
+                namespaceManager.AddNamespace("o", Namespace);
+
+                var devices = el.SelectNodes(".//o:device", namespaceManager);
+
+                foreach (var device in devices.Cast<XmlElement>())
+                {
+                    var bareJid = jid.GetBareJid();
+                    var deviceId = Guid.Parse(device.GetAttribute("id"));
+                    var bundleNodeId = string.Format("{0}:bundles:{1}", Namespace, deviceId);
+
+                    lock (_lock)
+                    {
+                        Store.SaveDeviceId(bareJid, deviceId);
+                    }
+
+                    _pep.Subscribe(bundleNodeId, OnBundleUpdated);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("error parsing device list");
+                Debug.WriteLine(e);
+            }
+        }
+
+        private void OnBundleUpdated(Jid jid, XmlElement el)
+        {
+            Debug.WriteLine(string.Format("bundled updated by {0}", jid));
+
+            if (jid == im.Jid)
+            {
+                Debug.WriteLine("ignoring our own bundle update");
+                return;
+            }
+
+            try
+            {
+                var bundle = OmemoBundle.FromXml(el);
+
+                lock (_lock)
+                {
+                    Store.SaveBundle(bundle.DeviceId, bundle);    
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("error parsing bundle");
+                Debug.WriteLine(e);
             }
         }
 
@@ -60,26 +107,32 @@ namespace Sharp.Xmpp.Extensions
 
         public void PublishDeviceList()
         {
-            var list = Xml.Element("list", "urn:xmpp:omemo:0");
-
-            var deviceIds = Store.GetDeviceIds(im.Jid.GetBareJid());
-
-            foreach (var deviceId in deviceIds)
+            lock (_lock)
             {
-                list.Child(Xml.Element("device").Attr("id", deviceId.ToString()));
-            }
+                var list = Xml.Element("list", "urn:xmpp:omemo:0");
 
-            _pep.Publish("urn:xmpp:omemo:0:devicelist", null, list);
+                var deviceIds = new[] { Store.GetCurrentDeviceId() };
+
+                foreach (var deviceId in deviceIds)
+                {
+                    list.Child(Xml.Element("device").Attr("id", deviceId.ToString()));
+                }
+
+                _pep.Publish("urn:xmpp:omemo:0:devicelist", null, list);
+            }
         }
 
         public void PublishBundles()
         {
-            var deviceIds = Store.GetDeviceIds(im.Jid.GetBareJid());
-
-            foreach (var deviceId in deviceIds)
+            lock (_lock)
             {
-                var bundle = Store.GetBundle(deviceId);
-                _pep.Publish("urn:xmpp:omemo:0:bundles:" + deviceId, null, bundle.ToXml());
+                var deviceIds = Store.GetDeviceIds(im.Jid.GetBareJid());
+
+                foreach (var deviceId in deviceIds)
+                {
+                    var bundle = Store.GetBundle(deviceId);
+                    _pep.Publish("urn:xmpp:omemo:0:bundles:" + deviceId, null, bundle.ToXml());
+                }
             }
         }
 

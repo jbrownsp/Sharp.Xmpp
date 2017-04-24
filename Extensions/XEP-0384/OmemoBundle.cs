@@ -31,9 +31,26 @@ namespace Sharp.Xmpp.Extensions
             return bundle;
         }
 
+        public static OmemoBundle FromXml(XmlElement xml)
+        {
+            var bundle = new OmemoBundle();
+
+            var namespaceManager = new XmlNamespaceManager(xml.OwnerDocument.NameTable);
+            namespaceManager.AddNamespace("o", Omemo.Namespace);
+
+            bundle.DeviceId = Guid.Parse(xml.SelectSingleNode(".//o:deviceId", namespaceManager).InnerText);
+
+            var identityKey = xml.SelectSingleNode(".//o:identityKey", namespaceManager);
+            bundle.IdentityKey = new KeyPair(null, Convert.FromBase64String(identityKey.InnerText));
+            bundle.PreKeys = xml.SelectNodes(".//o:preKeyPublic", namespaceManager).Cast<XmlElement>().Select(el => new KeyPair(null, Convert.FromBase64String(el.InnerText))).ToList();
+
+            return bundle;
+        }
+
         public XmlElement ToXml()
         {
             var bundle = Xml.Element("bundle", Omemo.Namespace);
+            bundle.Child(Xml.Element("deviceId").Text(DeviceId.ToString()));
             bundle.Child(Xml.Element("identityKey").Text(Convert.ToBase64String(IdentityKey.PublicKey)));
 
             // todo signed prekey + signature

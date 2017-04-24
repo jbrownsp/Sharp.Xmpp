@@ -2,6 +2,8 @@
 using Sharp.Xmpp.Im;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace Sharp.Xmpp.Extensions
@@ -11,6 +13,18 @@ namespace Sharp.Xmpp.Extensions
     /// </summary>
     internal class Pep : XmppExtension, IInputFilter<Im.Message>
     {
+        class CallbackWrapper
+        {
+            public Action<Jid, XmlElement> Callback { get; set; }
+            public bool IsRegexPattern { get; set; }
+
+            public CallbackWrapper(Action<Jid, XmlElement> callback, bool isRegexPattern)
+            {
+                Callback = callback;
+                IsRegexPattern = isRegexPattern;
+            }
+        }
+
         /// <summary>
         /// A reference to the 'Entity Capabilities' extension instance.
         /// </summary>
@@ -29,8 +43,8 @@ namespace Sharp.Xmpp.Extensions
         /// <summary>
         /// A dictionary of callback methods registered for specific events.
         /// </summary>
-        private IDictionary<string, Action<Jid, XmlElement>> callbacks =
-            new Dictionary<string, Action<Jid, XmlElement>>();
+        private IDictionary<string, CallbackWrapper> callbacks =
+            new Dictionary<string, CallbackWrapper>();
 
         /// <summary>
         /// An enumerable collection of XMPP namespaces the extension implements.
@@ -99,10 +113,23 @@ namespace Sharp.Xmpp.Extensions
             // should be swallowed or passed on?
             if (callbacks.ContainsKey(nodeId))
             {
-                callbacks[nodeId].Invoke(stanza.From, items["item"]);
+                callbacks[nodeId].Callback.Invoke(stanza.From, items["item"]);
                 return true;
             }
-            return false;
+
+            // try to run regex callbacks
+            var regexPatternedCallbacks = callbacks.Where(kv =>
+            {
+                var regex = new Regex(kv.Key, RegexOptions.IgnoreCase);
+                return regex.IsMatch(nodeId);
+            }).Select(kv => kv.Value.Callback).ToList();
+
+            foreach (var callback in regexPatternedCallbacks)
+            {
+                callback.Invoke(stanza.From, items["item"]);
+            }
+
+            return regexPatternedCallbacks.Count > 0;
         }
 
         /// <summary>
@@ -160,11 +187,11 @@ namespace Sharp.Xmpp.Extensions
         /// cb parameter is null.</exception>
         /// <exception cref="ArgumentException">A callback for the specified node id
         /// has already been installed.</exception>
-        public void Subscribe(string node, Action<Jid, XmlElement> cb)
+        public void Subscribe(string node, Action<Jid, XmlElement> cb, bool isRegex = false)
         {
             node.ThrowIfNull("node");
             cb.ThrowIfNull("cb");
-            callbacks.Add(node, cb);
+            callbacks[node] = new CallbackWrapper(cb, isRegex);
         }
 
         /// <summary>

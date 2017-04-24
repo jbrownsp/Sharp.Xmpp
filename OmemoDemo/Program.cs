@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 
 namespace OmemoDemo
 {
@@ -34,6 +35,7 @@ namespace OmemoDemo
 
         public IList<Guid> GetDeviceIds(Jid jid)
         {
+            Debug.WriteLine(string.Format("[{0}] GetDeviceIds", Thread.CurrentThread.Name));
             return _devices.ContainsKey(jid) ? _devices[jid] : new List<Guid>();
         }
 
@@ -97,10 +99,11 @@ namespace OmemoDemo
             {
                 client.OmemoStore = _store;
                 client.Message += (sender, args) => Console.WriteLine($"~[{args.Jid.GetBareJid()}]: {args.Message}");
+                client.SubscriptionRequest += from => true;
                 client.Connect();
-                client.Im.RequestSubscription(_recipient);
                 client.PublishOmemoDeviceList();
                 client.PublishOmemoBundles();
+                client.Im.RequestSubscription(_recipient);
 
                 while (true)
                 {
@@ -123,6 +126,8 @@ namespace OmemoDemo
                         switch (command)
                         {
                             case "b":
+                                client.PublishOmemoDeviceList();
+                                client.PublishOmemoBundles();
                                 break;
 
                             case "s":
@@ -152,6 +157,8 @@ namespace OmemoDemo
     {
         static void Main(string[] args)
         {
+            Debug.Listeners.Add(new ConsoleTraceListener());
+
             string username;
             string password;
             Jid recipient;
@@ -170,12 +177,14 @@ namespace OmemoDemo
                 deviceId = Guid.Parse("{35C8847B-0D95-4016-89BC-98B285D7D27D}");
             }
 
-            var store = new InMemoryOmemoStore(deviceId, OmemoBundle.Generate());
+            var currentDeviceBundle = OmemoBundle.Generate();
+            var store = new InMemoryOmemoStore(deviceId, currentDeviceBundle);
+            store.SaveDeviceId(new Jid("openfire.local", username), deviceId);
+            store.SaveBundle(deviceId, currentDeviceBundle);
             var client = new DemoClient("openfire.local", "openfire.local", username, password, recipient, store, deviceId);
             client.Run();
 
-            return;
-            Debug.Listeners.Add(new ConsoleTraceListener());
+            return;            
 
             // bob will receive first
             var bobJid = new Jid("openfire.local", "bob");
