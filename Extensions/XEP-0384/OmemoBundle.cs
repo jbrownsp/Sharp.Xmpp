@@ -14,7 +14,7 @@ namespace Sharp.Xmpp.Extensions
         }
 
         public KeyPair IdentityKey { get; set; }
-        public IList<KeyPair> PreKeys { get; set; }
+        public List<KeyPair> PreKeys { get; set; }
         public Guid DeviceId { get; set; }
 
         public static OmemoBundle Generate()

@@ -6,6 +6,10 @@ namespace Sharp.Xmpp.Extensions
     [Serializable]
     public class KeyPair
     {
+        public KeyPair()
+        {
+        }
+
         public KeyPair(byte[] privateKey, byte[] publicKey)
         {
             PublicKey = publicKey;
