@@ -271,8 +271,7 @@ namespace Sharp.Xmpp.Extensions
 
                         // get sender and recipient one time keys
                         var senderEphemeralKey = KeyPair.Generate();
-                        //var recipientEphemeralKey = recipientBundle.PreKeys[new Random().Next(0, recipientBundle.PreKeys.Count)];
-                        var recipientEphemeralKey = recipientBundle.PreKeys.First();
+                        var recipientEphemeralKey = recipientBundle.PreKeys[new Random().Next(0, recipientBundle.PreKeys.Count)];
 
                         // perform triple-dh
                         var secret = OlmUtils.SenderTripleDh(senderBundle.IdentityKey.PrivateKey, senderEphemeralKey.PrivateKey, recipientBundle.IdentityKey.PublicKey, recipientEphemeralKey.PublicKey);
