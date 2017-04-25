@@ -28,6 +28,14 @@ namespace Sharp.Xmpp.Extensions
 
         public bool Ratchet { get; set; }
 
+        public bool IsEstablished
+        {
+            get
+            {
+                return TheirRatchetKey != null;
+            }
+        }
+
         public static OlmSessionState InitializeAsSender(byte[] secret, KeyPair myIdentityKey, KeyPair myEphemeralKey, byte[] theirEphemeralKey)
         {
             var sessionState = new OlmSessionState

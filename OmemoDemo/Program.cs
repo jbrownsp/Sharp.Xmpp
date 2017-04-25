@@ -5,6 +5,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using System.Threading;
 
 namespace OmemoDemo
@@ -30,7 +32,11 @@ namespace OmemoDemo
                 _devices[jid] = new List<Guid>();
             }
 
-            _devices[jid].Add(deviceId);
+            // prevent duplicate devices
+            if (!_devices[jid].Contains(deviceId))
+            {
+                _devices[jid].Add(deviceId);
+            }
         }
 
         public IList<Guid> GetDeviceIds(Jid jid)
@@ -178,6 +184,7 @@ namespace OmemoDemo
             }
 
             var currentDeviceBundle = OmemoBundle.Generate();
+            currentDeviceBundle.DeviceId = deviceId;
             var store = new InMemoryOmemoStore(deviceId, currentDeviceBundle);
             store.SaveDeviceId(new Jid("openfire.local", username), deviceId);
             store.SaveBundle(deviceId, currentDeviceBundle);
@@ -186,6 +193,7 @@ namespace OmemoDemo
 
             return;            
 
+            /*
             // bob will receive first
             var bobJid = new Jid("openfire.local", "bob");
             var bobDeviceId = Guid.NewGuid();
@@ -201,7 +209,6 @@ namespace OmemoDemo
             // alice picks one of bob's prekeys at random
             var bobEphemeralKey = bobBundle.PreKeys[new Random().Next(0, bobBundle.PreKeys.Count)];
 
-            /*
             // alice calculates the secret
             var aliceSecret = OlmUtils.SenderTripleDh(aliceBundle.IdentityKey.PrivateKey, aliceEphemeralKey.PrivateKey, bobBundle.IdentityKey.PublicKey, bobEphemeralKey.PublicKey);
             Debug.WriteLine(string.Format("aliceSecret = {0}", Convert.ToBase64String(aliceSecret)));
@@ -251,7 +258,7 @@ namespace OmemoDemo
                 OlmSession receiver;
                 string receiverName;
 
-                if (i % 4 == 0)
+                if (i % 2 == 0)
                 {
                     sender = aliceSession;
                     senderName = "alice";
@@ -277,10 +284,10 @@ namespace OmemoDemo
             {
                 Debug.WriteLine(string.Format("{0} => {1} : {2}", message.Item2, message.Item4, Encoding.UTF8.GetString(message.Item3.ReadMessage(message.Item5))));
             }
-            */
 
             Console.WriteLine("Done");
             Console.ReadLine();
+            */
         }
     }
 

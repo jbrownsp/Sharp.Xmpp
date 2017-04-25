@@ -11,6 +11,14 @@ namespace Sharp.Xmpp.Extensions
     {
         private const byte OlmVersion = 0x03;
         private readonly OlmSessionState _state;
+
+        public bool IsEstablished
+        {
+            get
+            {
+                return _state.IsEstablished;
+            }
+        }
         
         public OlmSessionState SessionState
         {
