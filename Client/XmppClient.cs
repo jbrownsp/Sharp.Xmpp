@@ -492,6 +492,21 @@ namespace Sharp.Xmpp.Client
         }
 
         /// <summary>
+        /// The event that is raised when an encrypted chat message is received.
+        /// </summary>
+        public event EventHandler<MessageEventArgs> EncryptedMessage
+        {
+            add
+            {
+                im.EncryptedMessage += value;
+            }
+            remove
+            {
+                im.EncryptedMessage -= value;
+            }
+        }
+
+        /// <summary>
         /// The event that is raised when the subject is changed in a group chat.
         /// </summary>
         public event EventHandler<MessageEventArgs> GroupChatSubjectChanged

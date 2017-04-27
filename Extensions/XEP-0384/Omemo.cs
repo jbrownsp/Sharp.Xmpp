@@ -201,6 +201,10 @@ namespace Sharp.Xmpp.Extensions
 
                 Debug.WriteLine(originalMessage);
 
+                // raise event with decrypted message
+                stanza.Body = originalMessage;
+                im.RaiseEncryptedMessage(stanza);
+
                 return true;
             }
             catch (Exception e)

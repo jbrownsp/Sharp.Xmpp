@@ -256,6 +256,20 @@ namespace Sharp.Xmpp.Im
         public event EventHandler<MessageEventArgs> Message;
 
         /// <summary>
+        /// The event that is raised when an encrypted chat message is received.
+        /// </summary>
+        public event EventHandler<MessageEventArgs> EncryptedMessage;
+
+        /// <summary>
+        /// Raises the EncryptedMessage event
+        /// </summary>
+        /// <param name="message"></param>
+        public void RaiseEncryptedMessage(Message message)
+        {
+            EncryptedMessage.Raise(this, new MessageEventArgs(message.From, message));
+        }
+
+        /// <summary>
         /// The event that is raised when a subscription request made by the JID
         /// associated with this instance has been approved.
         /// </summary>
