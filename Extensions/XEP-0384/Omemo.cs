@@ -203,7 +203,7 @@ namespace Sharp.Xmpp.Extensions
 
                 // raise event with decrypted message
                 stanza.Body = originalMessage;
-                im.RaiseEncryptedMessage(stanza);
+                im.RaiseMessage(stanza);
 
                 return true;
             }
