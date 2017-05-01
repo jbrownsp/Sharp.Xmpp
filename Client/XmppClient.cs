@@ -830,23 +830,10 @@ namespace Sharp.Xmpp.Client
             to.ThrowIfNull("to");
             body.ThrowIfNullOrEmpty("body");
 
-            string payload;
-
+            string payload = body;
             if (encrypt)
             {
-                var recipients = new List<Jid>();
-                recipients.Add(to);
-
-                if (additionalAddresses != null)
-                {
-                    recipients.AddRange(additionalAddresses);
-                }
-
-                payload = omemo.Encrypt(recipients, body);
-            }
-            else
-            {
-                payload = body;
+                payload = Encrypt(body, to, additionalAddresses);
             }
 
             im.SendMessage(to, payload, subject, additionalAddresses, thread, type, language);
@@ -884,12 +871,22 @@ namespace Sharp.Xmpp.Client
         /// <include file='Examples.xml' path='S22/Xmpp/Client/XmppClient[@name="SendMessage-2"]/*'/>
         public void SendMessage(Jid to, IDictionary<string, string> bodies,
             IDictionary<string, string> subjects = null, string thread = null,
-            MessageType type = MessageType.Normal, CultureInfo language = null)
+            MessageType type = MessageType.Normal, CultureInfo language = null, bool encrypt = false)
         {
             AssertValid();
             to.ThrowIfNull("to");
             bodies.ThrowIfNull("bodies");
-            im.SendMessage(to, bodies, subjects, thread, null, type, language);
+
+            IDictionary<string, string> payloads = new Dictionary<string, string>();
+            if (encrypt)
+            {
+                foreach (KeyValuePair<string, string> kvp in bodies)
+                {
+                    payloads.Add(kvp.Key, Encrypt(kvp.Value, to));
+                }
+            }
+
+            im.SendMessage(to, payloads, subjects, thread, null, type, language);
         }
 
         /// <summary>
@@ -904,11 +901,37 @@ namespace Sharp.Xmpp.Client
         /// the XMPP server.</exception>
         /// <exception cref="ObjectDisposedException">The XmppClient object has been
         /// disposed.</exception>
-        public void SendMessage(Message message)
+        public void SendMessage(Message message, bool encrypt = false)
         {
             AssertValid();
             message.ThrowIfNull("message");
+            
+            if (encrypt)
+            {
+                message.Body = Encrypt(message.Body, message.To, message.Addresses);
+            }
+
             im.SendMessage(message);
+        }
+
+        /// <summary>
+        /// Encrypts the body of the message
+        /// </summary>
+        /// <param name="body"></param>
+        /// <param name="to"></param>
+        /// <param name="additionalAddresses"></param>
+        /// <returns></returns>
+        private string Encrypt(string body, Jid to, List<Jid> additionalAddresses = null)
+        {
+            var recipients = new List<Jid>();
+            recipients.Add(to);
+
+            if (additionalAddresses != null)
+            {
+                recipients.AddRange(additionalAddresses);
+            }
+
+            return omemo.Encrypt(recipients, body);
         }
 
         /// <summary>
