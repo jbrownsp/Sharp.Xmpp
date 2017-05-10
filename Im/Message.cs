@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -210,8 +210,9 @@ namespace Sharp.Xmpp.Im
                             sb.Append(String.Format("<address type='to' jid='{0}' />", jid.ToString()));
                         }
 
-						XmlElement addressXml = Xml.Element("addresses");
-						addressXml.InnerXml = sb.ToString();
+                        XmlElement addressXml = Xml.Element("addresses");
+                        addressXml.InnerXml = sb.ToString();
+
                         addressXml.SetAttribute("xmlns", "http://jabber.org/protocol/address");
 
                         element.Child(addressXml);
