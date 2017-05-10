@@ -394,6 +394,9 @@ namespace Sharp.Xmpp.Im
                 Roster roster = GetRoster();
                 // Send initial presence.
                 SendPresence(new Presence());
+
+                core.TryEnableStreamManagement();
+
                 return roster;
             }
             catch (SocketException e)

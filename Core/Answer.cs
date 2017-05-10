@@ -12,13 +12,13 @@ namespace Sharp.Xmpp.Core
         {
         }
 
-        public int H
+        public uint H
         {
             get
             {
                 var value = element.GetAttribute("h");
-                int h;
-                return int.TryParse(value, out h) ? h : 0;
+                uint h;
+                return uint.TryParse(value, out h) ? h : 0;
             }
 
             set

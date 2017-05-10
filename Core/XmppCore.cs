@@ -137,7 +137,8 @@ namespace Sharp.Xmpp.Core
         private CancellationTokenSource cancelDispatch = new CancellationTokenSource();
 
         private bool streamManagementEnabled = false;
-        private int streamManagementCounter = 0;
+        private uint streamManagementAnswerCounter = 0;
+        private uint streamManagementRequestCounter = 0;
 
         /// <summary>
         /// The hostname of the XMPP server to connect to.
@@ -322,12 +323,6 @@ namespace Sharp.Xmpp.Core
         /// </summary>
         public event EventHandler<PresenceEventArgs> Presence;
 
-        public event EventHandler<EnabledEventArgs> Enabled;
-
-        public event EventHandler<RequestEventArgs> Request;
-
-        public event EventHandler<AnswerEventArgs> Answer;
-
         /// <summary>
         /// Initializes a new instance of the XmppCore class.
         /// </summary>
@@ -490,8 +485,6 @@ namespace Sharp.Xmpp.Core
                 // Set up the listener and dispatcher tasks.
                 Task.Factory.StartNew(ReadXmlStream, TaskCreationOptions.LongRunning);
                 Task.Factory.StartNew(DispatchEvents, TaskCreationOptions.LongRunning);
-
-                EnableStreamManagement();
             }
             catch (XmlException e)
             {
@@ -499,9 +492,25 @@ namespace Sharp.Xmpp.Core
             }
         }
 
-        private void EnableStreamManagement()
+        public void TryEnableStreamManagement()
         {
             Send(new Enable());
+        }
+
+        private void SetStreamManagementEnabled()
+        {
+            streamManagementEnabled = true;
+        }
+
+        private void SendStreamMangementAnswer()
+        {
+            Send(new Answer { H = ++streamManagementAnswerCounter });
+        }
+
+        private void SendStreamManagementRequest()
+        {
+            ++streamManagementRequestCounter;
+            Send(new Request());
         }
 
         /// <summary>
@@ -1175,7 +1184,7 @@ namespace Sharp.Xmpp.Core
                 try
                 {
                     stream.Write(buf, 0, buf.Length);
-                    if (debugStanzas) System.Diagnostics.Debug.WriteLine(xml);
+                    if (debugStanzas) System.Diagnostics.Debug.WriteLine("SENT: " + xml);
                 }
                 catch (IOException e)
                 {
@@ -1197,6 +1206,11 @@ namespace Sharp.Xmpp.Core
         {
             stanza.ThrowIfNull("stanza");
             Send(stanza.ToString());
+
+            if (streamManagementEnabled && (stanza is Iq || stanza is Presence || stanza is Message))
+            {
+                SendStreamManagementRequest();
+            }
         }
 
         /// <summary>
@@ -1271,6 +1285,10 @@ namespace Sharp.Xmpp.Core
                         case "r":
                             stanzaQueue.Add(new Request(elem));
                             break;
+
+                        default:
+                            System.Diagnostics.Debug.WriteLine("UNKNOWN ELEMENT: " + elem.ToXmlString());
+                            break;
                     }
                 }
             }
@@ -1308,7 +1326,7 @@ namespace Sharp.Xmpp.Core
                 try
                 {
                     Stanza stanza = stanzaQueue.Take(cancelDispatch.Token);
-                    if (debugStanzas) System.Diagnostics.Debug.WriteLine(stanza.ToString());
+                    if (debugStanzas) System.Diagnostics.Debug.WriteLine("RECVD: " + stanza.ToString());
                     if (stanza is Iq)
                         Iq.Raise(this, new IqEventArgs(stanza as Iq));
                     else if (stanza is Message)
@@ -1316,11 +1334,9 @@ namespace Sharp.Xmpp.Core
                     else if (stanza is Presence)
                         Presence.Raise(this, new PresenceEventArgs(stanza as Presence));
                     else if (stanza is Enabled)
-                        streamManagementEnabled = true;
+                        SetStreamManagementEnabled();
                     else if (stanza is Request)
-                        Send(new Answer { H = streamManagementCounter++ });
-                    else if (stanza is Answer)
-                        Answer.Raise(this, new AnswerEventArgs(stanza as Answer));
+                        SendStreamMangementAnswer();
                 }
                 catch (OperationCanceledException)
                 {

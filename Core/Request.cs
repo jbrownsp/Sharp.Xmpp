@@ -11,5 +11,13 @@ namespace Sharp.Xmpp.Core
         public Request(XmlElement element) : base(element)
         {
         }
+
+        protected override string RootElementName
+        {
+            get
+            {
+                return "r";
+            }
+        }
     }
 }
