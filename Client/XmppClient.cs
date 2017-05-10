@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Security;
+using Sharp.Xmpp.Extensions.XEP_0384;
 
 namespace Sharp.Xmpp.Client
 {
@@ -824,7 +825,7 @@ namespace Sharp.Xmpp.Client
         /// <include file='Examples.xml' path='S22/Xmpp/Client/XmppClient[@name="SendMessage-1"]/*'/>
         public void SendMessage(Jid to, string body, string subject = null, List<Jid> additionalAddresses = null,
             string thread = null, MessageType type = MessageType.Normal,
-            CultureInfo language = null, bool encrypt = false)
+            CultureInfo language = null, bool encrypt = false, byte[] aesKey = null, byte[] aesIv = null)
         {
             AssertValid();
             to.ThrowIfNull("to");
@@ -833,7 +834,7 @@ namespace Sharp.Xmpp.Client
             string payload = body;
             if (encrypt)
             {
-                payload = Encrypt(body, to, additionalAddresses);
+                payload = Encrypt(body, to, additionalAddresses, aesKey, aesIv);
             }
 
             im.SendMessage(to, payload, subject, additionalAddresses, thread, type, language);
@@ -871,7 +872,8 @@ namespace Sharp.Xmpp.Client
         /// <include file='Examples.xml' path='S22/Xmpp/Client/XmppClient[@name="SendMessage-2"]/*'/>
         public void SendMessage(Jid to, IDictionary<string, string> bodies,
             IDictionary<string, string> subjects = null, string thread = null,
-            MessageType type = MessageType.Normal, CultureInfo language = null, bool encrypt = false)
+            MessageType type = MessageType.Normal, CultureInfo language = null, bool encrypt = false, 
+            byte[] aesKey = null, byte[] aesIv = null)
         {
             AssertValid();
             to.ThrowIfNull("to");
@@ -882,7 +884,7 @@ namespace Sharp.Xmpp.Client
             {
                 foreach (KeyValuePair<string, string> kvp in bodies)
                 {
-                    payloads.Add(kvp.Key, Encrypt(kvp.Value, to));
+                    payloads.Add(kvp.Key, Encrypt(kvp.Value, to, aesKey: aesKey, aesIv: aesIv));
                 }
             }
 
@@ -901,14 +903,14 @@ namespace Sharp.Xmpp.Client
         /// the XMPP server.</exception>
         /// <exception cref="ObjectDisposedException">The XmppClient object has been
         /// disposed.</exception>
-        public void SendMessage(Message message, bool encrypt = false)
+        public void SendMessage(Message message, bool encrypt = false, byte[] aesKey = null, byte[] aesIv = null)
         {
             AssertValid();
             message.ThrowIfNull("message");
             
             if (encrypt)
             {
-                message.Body = Encrypt(message.Body, message.To, message.Addresses);
+                message.Body = Encrypt(message.Body, message.To, message.Addresses, aesKey, aesIv);
             }
 
             im.SendMessage(message);
@@ -920,8 +922,10 @@ namespace Sharp.Xmpp.Client
         /// <param name="body"></param>
         /// <param name="to"></param>
         /// <param name="additionalAddresses"></param>
+        /// <param name="aesKey"></param>
+        /// <param name="aesIv"></param>
         /// <returns></returns>
-        private string Encrypt(string body, Jid to, List<Jid> additionalAddresses = null)
+        private string Encrypt(string body, Jid to, List<Jid> additionalAddresses = null, byte[] aesKey = null, byte[] aesIv = null)
         {
             var recipients = new List<Jid>();
             recipients.Add(to);
@@ -931,7 +935,27 @@ namespace Sharp.Xmpp.Client
                 recipients.AddRange(additionalAddresses);
             }
 
-            return omemo.Encrypt(recipients, body);
+            return omemo.Encrypt(recipients, body, aesKey, aesIv);
+        }
+
+        public EncryptedFile EncryptFile(byte[] file)
+        {
+            return omemo.EncryptFile(file);
+        }
+
+        public byte[] DecryptFile(byte[] file, byte[] aesKey, byte[] aesIv)
+        {
+            return DecryptFile(new EncryptedFile()
+            {
+                AesKey = aesKey,
+                AesIv = aesIv,
+                File = file,
+            });
+        }
+
+        public byte[] DecryptFile(EncryptedFile file)
+        {
+            return omemo.DecryptFile(file);
         }
 
         /// <summary>

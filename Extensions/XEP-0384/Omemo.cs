@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Xml;
+using Sharp.Xmpp.Extensions.XEP_0384;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -215,7 +216,7 @@ namespace Sharp.Xmpp.Extensions
             }
         }
 
-        public string Encrypt(IEnumerable<Jid> recipients, string message)
+        public string Encrypt(IEnumerable<Jid> recipients, string message, byte[] passedAesKey = null, byte[] passedAesIv = null)
         {
             // generate key and iv, then encrypt message
             byte[] aesKey;
@@ -224,12 +225,26 @@ namespace Sharp.Xmpp.Extensions
 
             using (var cipher = new RijndaelManaged())
             {
-                cipher.GenerateKey();
-                cipher.GenerateIV();
+                if (passedAesKey == null)
+                {
+                    cipher.GenerateKey();
+                    aesKey = cipher.Key;
+                }
+                else
+                {
+                    aesKey = passedAesKey;
+                }
 
-                aesKey = cipher.Key;
-                aesIv = cipher.IV;
-
+                if (passedAesIv == null)
+                {
+                    cipher.GenerateIV();
+                    aesIv = cipher.IV;
+                }
+                else
+                {
+                    aesIv = passedAesIv;
+                }
+                
                 var encryptor = cipher.CreateEncryptor(aesKey, aesIv);
 
                 using (var stream = new MemoryStream())
@@ -313,6 +328,68 @@ namespace Sharp.Xmpp.Extensions
             encrypted.Child(Xml.Element("payload").Text(Convert.ToBase64String(payload)));
 
             return encrypted.ToXmlString();
+        }
+
+        public EncryptedFile EncryptFile(byte[] file, byte[] passedAesKey = null, byte[] passedAesIv = null)
+        {
+            using (var cipher = new RijndaelManaged())
+            {
+                byte[] aesKey;
+                if (passedAesKey == null)
+                {
+                    cipher.GenerateKey();
+                    aesKey = cipher.Key;
+                }
+                else
+                {
+                    aesKey = passedAesKey;
+                }
+
+                byte[] aesIv;
+                if (passedAesIv == null)
+                {
+                    cipher.GenerateIV();
+                    aesIv = cipher.IV;
+                }
+                else
+                {
+                    aesIv = passedAesIv;
+                }
+
+                var encryptor = cipher.CreateEncryptor(aesKey, aesIv);
+
+                using (var stream = new MemoryStream())
+                using (var cryptoStream = new CryptoStream(stream, encryptor, CryptoStreamMode.Write))
+                {
+                    using (var writer = new BinaryWriter(cryptoStream))
+                    {
+                        writer.Write(file);
+                    }
+
+                    return new EncryptedFile()
+                    {
+                        AesKey = aesKey,
+                        AesIv = aesIv,
+                        File = stream.ToArray(),
+                    }; 
+                }
+            }
+        }
+
+        public byte[] DecryptFile(EncryptedFile file)
+        {
+            using (var cipher = new RijndaelManaged())
+            {
+                var decryptor = cipher.CreateDecryptor(file.AesKey, file.AesIv);
+
+                using (var stream = new MemoryStream(file.File))
+                using (var cryptoStream = new CryptoStream(stream, decryptor, CryptoStreamMode.Read))
+                using(var decryptedStream = new MemoryStream())
+                {
+                    cryptoStream.CopyTo(decryptedStream);
+                    return decryptedStream.ToArray();
+                }
+            }
         }
 
         public IOmemoStore Store { get; set; }
