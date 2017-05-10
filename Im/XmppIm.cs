@@ -9,6 +9,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Xml;
+using System.Diagnostics;
 
 namespace Sharp.Xmpp.Im
 {
@@ -523,6 +524,8 @@ namespace Sharp.Xmpp.Im
         {
             AssertValid();
             message.ThrowIfNull("message");
+			Debug.WriteLine("XmppIm sending message");
+
             // "Stamp" the sender's JID onto the message.
             message.From = Jid;
             // Invoke IOutput<Message> Plugins.

@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Diagnostics;
 
 namespace Sharp.Xmpp.Core
 {
@@ -590,6 +591,7 @@ namespace Sharp.Xmpp.Core
         {
             AssertValid();
             message.ThrowIfNull("message");
+			Debug.WriteLine("XmppCore sending message");
             Send(message);
         }
 
@@ -1175,6 +1177,8 @@ namespace Sharp.Xmpp.Core
         public void Send(string xml)
         {
             xml.ThrowIfNull("xml");
+			Debug.WriteLine("XmppCore sending xml");
+
             // XMPP is guaranteed to be UTF-8.
             byte[] buf = Encoding.UTF8.GetBytes(xml);
             lock (writeLock)
