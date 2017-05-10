@@ -2009,6 +2009,11 @@ namespace Sharp.Xmpp.Client
             omemo.PublishBundles();
         }
 
+        public void EnableStreamManagement()
+        {
+            im.EnableStreamManagement();
+        }
+
         /// <summary>
         /// Closes the connection with the XMPP server. This automatically disposes
         /// of the object.

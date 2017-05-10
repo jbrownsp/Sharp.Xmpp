@@ -293,6 +293,12 @@ namespace Sharp.Xmpp.Im
         /// </summary>
         public event EventHandler<ErrorEventArgs> Error;
 
+        public event EventHandler<EnabledEventArgs> StreamManagementEnabled;
+
+        public event EventHandler<RequestEventArgs> StreamManagementRequest;
+
+        public event EventHandler<AnswerEventArgs> StreamManagementAnswer;
+
         /// <summary>
         /// Initializes a new instance of the XmppIm.
         /// </summary>
@@ -1199,6 +1205,11 @@ namespace Sharp.Xmpp.Im
                 throw Util.ExceptionFromError(iq, "The privacy list could not be made " +
                     "the default.");
             }
+        }
+
+        public void Send(Stanza stanza)
+        {
+            core.Send(stanza);
         }
 
         /// <summary>

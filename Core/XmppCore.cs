@@ -136,6 +136,9 @@ namespace Sharp.Xmpp.Core
         /// </summary>
         private CancellationTokenSource cancelDispatch = new CancellationTokenSource();
 
+        private bool streamManagementEnabled = false;
+        private int streamManagementCounter = 0;
+
         /// <summary>
         /// The hostname of the XMPP server to connect to.
         /// </summary>
@@ -319,6 +322,12 @@ namespace Sharp.Xmpp.Core
         /// </summary>
         public event EventHandler<PresenceEventArgs> Presence;
 
+        public event EventHandler<EnabledEventArgs> Enabled;
+
+        public event EventHandler<RequestEventArgs> Request;
+
+        public event EventHandler<AnswerEventArgs> Answer;
+
         /// <summary>
         /// Initializes a new instance of the XmppCore class.
         /// </summary>
@@ -481,11 +490,18 @@ namespace Sharp.Xmpp.Core
                 // Set up the listener and dispatcher tasks.
                 Task.Factory.StartNew(ReadXmlStream, TaskCreationOptions.LongRunning);
                 Task.Factory.StartNew(DispatchEvents, TaskCreationOptions.LongRunning);
+
+                EnableStreamManagement();
             }
             catch (XmlException e)
             {
                 throw new XmppException("The XML stream could not be negotiated.", e);
             }
+        }
+
+        private void EnableStreamManagement()
+        {
+            Send(new Enable());
         }
 
         /// <summary>
@@ -1134,7 +1150,7 @@ namespace Sharp.Xmpp.Core
         /// is null.</exception>
         /// <exception cref="IOException">There was a failure while writing
         /// to the network.</exception>
-        private void Send(XmlElement element)
+        public void Send(XmlElement element)
         {
             element.ThrowIfNull("element");
             Send(element.ToXmlString());
@@ -1147,7 +1163,7 @@ namespace Sharp.Xmpp.Core
         /// <exception cref="ArgumentNullException">The xml parameter is null.</exception>
         /// <exception cref="IOException">There was a failure while writing to
         /// the network.</exception>
-        private void Send(string xml)
+        public void Send(string xml)
         {
             xml.ThrowIfNull("xml");
             // XMPP is guaranteed to be UTF-8.
@@ -1177,7 +1193,7 @@ namespace Sharp.Xmpp.Core
         /// <exception cref="ArgumentNullException">The stanza parameter is null.</exception>
         /// <exception cref="IOException">There was a failure while writing to
         /// the network.</exception>
-        private void Send(Stanza stanza)
+        public void Send(Stanza stanza)
         {
             stanza.ThrowIfNull("stanza");
             Send(stanza.ToString());
@@ -1223,7 +1239,7 @@ namespace Sharp.Xmpp.Core
             {
                 while (true)
                 {
-                    XmlElement elem = parser.NextElement("iq", "message", "presence");
+                    XmlElement elem = parser.NextElement("iq", "message", "presence", "enabled", "a", "r");
                     // Parse element and dispatch.
                     switch (elem.Name)
                     {
@@ -1241,6 +1257,19 @@ namespace Sharp.Xmpp.Core
 
                         case "presence":
                             stanzaQueue.Add(new Presence(elem));
+                            break;
+
+                        // XEP-0198 - Stream Management 
+                        case "enabled":
+                            stanzaQueue.Add(new Enabled(elem));
+                            break;
+
+                        case "a":
+                            stanzaQueue.Add(new Answer(elem));
+                            break;
+
+                        case "r":
+                            stanzaQueue.Add(new Request(elem));
                             break;
                     }
                 }
@@ -1286,6 +1315,12 @@ namespace Sharp.Xmpp.Core
                         Message.Raise(this, new MessageEventArgs(stanza as Message));
                     else if (stanza is Presence)
                         Presence.Raise(this, new PresenceEventArgs(stanza as Presence));
+                    else if (stanza is Enabled)
+                        streamManagementEnabled = true;
+                    else if (stanza is Request)
+                        Send(new Answer { H = streamManagementCounter++ });
+                    else if (stanza is Answer)
+                        Answer.Raise(this, new AnswerEventArgs(stanza as Answer));
                 }
                 catch (OperationCanceledException)
                 {
