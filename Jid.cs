@@ -63,6 +63,13 @@ namespace Sharp.Xmpp
             }
         }
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="T:Sharp.Xmpp.Jid"/> class.
+		/// </summary>
+		public Jid()
+		{
+		}
+
         /// <summary>
         /// Initializes a new instance of the JID class.
         /// </summary>

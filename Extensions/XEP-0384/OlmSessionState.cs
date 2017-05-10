@@ -24,7 +24,7 @@ namespace Sharp.Xmpp.Extensions
         public byte[] RecvChainKey { get; set; }
         public int RecvChainIndex { get; set; }
 
-        public IList<OlmSkippedMessageKey> SkippedMessageKeys { get; set; }
+        public List<OlmSkippedMessageKey> SkippedMessageKeys { get; set; }
 
         public bool Ratchet { get; set; }
 
