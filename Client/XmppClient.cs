@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Security;
+using System.Diagnostics;
 using Sharp.Xmpp.Extensions.XEP_0384;
 
 namespace Sharp.Xmpp.Client
@@ -907,10 +908,12 @@ namespace Sharp.Xmpp.Client
         {
             AssertValid();
             message.ThrowIfNull("message");
-            
+
+			Debug.WriteLine("XmppClient sending message");
             if (encrypt)
             {
                 message.Body = Encrypt(message.Body, message.To, message.Addresses, aesKey, aesIv);
+				Debug.WriteLine("XmppClient encrypting message");
             }
 
             im.SendMessage(message);
