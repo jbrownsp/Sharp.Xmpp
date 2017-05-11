@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
+using System.Text;
 using System.Xml;
 
 namespace Sharp.Xmpp.Extensions
@@ -185,19 +185,8 @@ namespace Sharp.Xmpp.Extensions
                 var payload = Convert.FromBase64String(encrypted.SelectSingleNode(".//o:payload", namespaceManager).InnerText);
                 var originalMessage = string.Empty;
 
-                using (var cipher = new RijndaelManaged())
-                {
-                    var transform = cipher.CreateDecryptor(aesKey, iv);
-
-                    using (var stream = new MemoryStream(payload))
-                    using (var cryptoStream = new CryptoStream(stream, transform, CryptoStreamMode.Read))
-                    {
-                        using (var reader = new StreamReader(cryptoStream))
-                        {
-                            originalMessage = reader.ReadToEnd();
-                        }
-                    }
-                }
+                payload = OlmUtils.Decrypt(aesKey, iv, payload);
+                originalMessage = Encoding.UTF8.GetString(payload);
 
                 Debug.WriteLine(originalMessage);
 
@@ -218,31 +207,9 @@ namespace Sharp.Xmpp.Extensions
         public string Encrypt(IEnumerable<Jid> recipients, string message)
         {
             // generate key and iv, then encrypt message
-            byte[] aesKey;
-            byte[] aesIv;
-            byte[] payload;
-
-            using (var cipher = new RijndaelManaged())
-            {
-                cipher.GenerateKey();
-                cipher.GenerateIV();
-
-                aesKey = cipher.Key;
-                aesIv = cipher.IV;
-
-                var encryptor = cipher.CreateEncryptor(aesKey, aesIv);
-
-                using (var stream = new MemoryStream())
-                using (var cryptoStream = new CryptoStream(stream, encryptor, CryptoStreamMode.Write))
-                {
-                    using (var writer = new StreamWriter(cryptoStream))
-                    {
-                        writer.Write(message);                        
-                    }
-
-                    payload = stream.ToArray();
-                }
-            }
+            var aesKey = OlmUtils.GenerateKey();
+            var aesIv = OlmUtils.GenerateIv();
+            var payload = OlmUtils.Encrypt(aesKey, aesIv, Encoding.UTF8.GetBytes(message));
 
             var encrypted = Xml.Element("encrypted", "urn:xmpp:omemo:0");
             var header = Xml.Element("header");

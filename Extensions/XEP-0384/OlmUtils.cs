@@ -10,6 +10,7 @@ using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
+using Org.BouncyCastle.Security;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -119,6 +120,20 @@ namespace Sharp.Xmpp.Extensions
             var cipherLength = cipher.ProcessBytes(input, 0, input.Length, cipherText, 0);
             cipher.DoFinal(cipherText, cipherLength);
             return cipherText;
+        }
+
+        public static byte[] GenerateKey()
+        {
+            var generator = GeneratorUtilities.GetKeyGenerator("AES256");
+            return generator.GenerateKey();
+        }
+
+        public static byte[] GenerateIv(int size = 16)
+        {
+            var random = new SecureRandom();
+            var iv = new byte[size];
+            random.NextBytes(iv);
+            return iv;
         }
     }
 }
