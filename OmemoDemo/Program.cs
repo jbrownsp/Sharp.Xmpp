@@ -170,25 +170,25 @@ namespace OmemoDemo
             Jid recipient;
             Guid deviceId;
 
-            if (args.Length == 0 || args[0] == "alice")
+            if (args[0] == "alice")
             {
-				username = "sabertoothmel50"; password = "P@ssw0rd1";
-                recipient = new Jid("sabertoothmel51@sabertoothnewqa");
+                username = password = "alice";
+                recipient = new Jid("bob@openfire.local");
                 deviceId = Guid.Parse("{F806A73E-7B9A-49C1-9670-BC79A14F7E94}");
             }
             else
             {
-				username = "sabertoothmel51"; password = "P@ssw0rd1";
-                recipient = new Jid("sabertoothmel50@sabertoothnewqa");
+                username = password = "bob";
+                recipient = new Jid("alice@openfire.local");
                 deviceId = Guid.Parse("{35C8847B-0D95-4016-89BC-98B285D7D27D}");
             }
 
             var currentDeviceBundle = OmemoBundle.Generate();
             currentDeviceBundle.DeviceId = deviceId;
             var store = new InMemoryOmemoStore(deviceId, currentDeviceBundle);
-            store.SaveDeviceId(new Jid("sabertoothnewqa", username), deviceId);
+            store.SaveDeviceId(new Jid("openfire.local", username), deviceId);
             store.SaveBundle(deviceId, currentDeviceBundle);
-            var client = new DemoClient("sabertoothqa01.d.epsilon.com", "sabertoothnewqa", username, password, recipient, store, deviceId);
+            var client = new DemoClient("openfire.local", "openfire.local", username, password, recipient, store, deviceId);
             client.Run();
 
             return;            

@@ -25,6 +25,9 @@ namespace Sharp.Xmpp.Im
             private set;
         }
 
+        public byte[] AesKey { get; private set; }
+        public byte[] AesIv { get; private set; }
+
         /// <summary>
         /// Initializes a new instance of the MessageEventArgs class.
         /// </summary>
@@ -36,6 +39,16 @@ namespace Sharp.Xmpp.Im
             message.ThrowIfNull("message");
             Jid = jid;
             Message = message;
+        }
+
+        public MessageEventArgs(Jid jid, Message message, byte[] aesKey, byte[] aesIv)
+        {
+            jid.ThrowIfNull("jid");
+            message.ThrowIfNull("message");
+            Jid = jid;
+            Message = message;
+            AesKey = aesKey;
+            AesIv = aesIv;
         }
     }
 }

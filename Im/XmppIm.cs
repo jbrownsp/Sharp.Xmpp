@@ -265,6 +265,11 @@ namespace Sharp.Xmpp.Im
             Message.Raise(this, new MessageEventArgs(message.From, message));
         }
 
+        public void RaiseMessage(Message message, byte[] aesKey, byte[] aesIv)
+        {
+            Message.Raise(this, new MessageEventArgs(message.From, message, aesKey, aesIv));
+        }
+
         /// <summary>
         /// The event that is raised when a subscription request made by the JID
         /// associated with this instance has been approved.

@@ -193,7 +193,7 @@ namespace Sharp.Xmpp.Extensions
 
                 // raise event with decrypted message
                 stanza.Body = originalMessage;
-                im.RaiseMessage(stanza);
+                im.RaiseMessage(stanza, aesKey, iv);
 
                 return true;
             }
@@ -208,8 +208,8 @@ namespace Sharp.Xmpp.Extensions
         public string Encrypt(IEnumerable<Jid> recipients, string message, byte[] passedAesKey = null, byte[] passedAesIv = null)
         {
             // generate key and iv, then encrypt message
-            var aesKey = OlmUtils.GenerateKey();
-            var aesIv = OlmUtils.GenerateIv();
+            var aesKey = passedAesKey ?? OlmUtils.GenerateKey();
+            var aesIv = passedAesIv ?? OlmUtils.GenerateIv();
             var payload = OlmUtils.Encrypt(aesKey, aesIv, Encoding.UTF8.GetBytes(message));
 
             var encrypted = Xml.Element("encrypted", "urn:xmpp:omemo:0");
@@ -285,64 +285,20 @@ namespace Sharp.Xmpp.Extensions
 
         public EncryptedFile EncryptFile(byte[] file, byte[] passedAesKey = null, byte[] passedAesIv = null)
         {
-            using (var cipher = new RijndaelManaged())
+            byte[] aesKey = passedAesKey ?? OlmUtils.GenerateKey();
+            byte[] aesIv = passedAesIv ?? OlmUtils.GenerateIv();
+            
+            return new EncryptedFile()
             {
-                byte[] aesKey;
-                if (passedAesKey == null)
-                {
-                    cipher.GenerateKey();
-                    aesKey = cipher.Key;
-                }
-                else
-                {
-                    aesKey = passedAesKey;
-                }
-
-                byte[] aesIv;
-                if (passedAesIv == null)
-                {
-                    cipher.GenerateIV();
-                    aesIv = cipher.IV;
-                }
-                else
-                {
-                    aesIv = passedAesIv;
-                }
-
-                var encryptor = cipher.CreateEncryptor(aesKey, aesIv);
-
-                using (var stream = new MemoryStream())
-                using (var cryptoStream = new CryptoStream(stream, encryptor, CryptoStreamMode.Write))
-                {
-                    using (var writer = new BinaryWriter(cryptoStream))
-                    {
-                        writer.Write(file);
-                    }
-
-                    return new EncryptedFile()
-                    {
-                        AesKey = aesKey,
-                        AesIv = aesIv,
-                        File = stream.ToArray(),
-                    }; 
-                }
-            }
+                AesKey = aesKey,
+                AesIv = aesIv,
+                File = OlmUtils.Encrypt(file, aesKey, aesIv),
+            }; 
         }
 
         public byte[] DecryptFile(EncryptedFile file)
         {
-            using (var cipher = new RijndaelManaged())
-            {
-                var decryptor = cipher.CreateDecryptor(file.AesKey, file.AesIv);
-
-                using (var stream = new MemoryStream(file.File))
-                using (var cryptoStream = new CryptoStream(stream, decryptor, CryptoStreamMode.Read))
-                using(var decryptedStream = new MemoryStream())
-                {
-                    cryptoStream.CopyTo(decryptedStream);
-                    return decryptedStream.ToArray();
-                }
-            }
+            return OlmUtils.Decrypt(file.AesKey, file.AesIv, file.File);
         }
 
         public IOmemoStore Store { get; set; }
