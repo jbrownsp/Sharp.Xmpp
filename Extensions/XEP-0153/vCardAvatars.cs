@@ -4,9 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Xml;
 using System.Xml.Linq;
+using PCLCrypto;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -116,10 +116,8 @@ namespace Sharp.Xmpp.Extensions
         private string Hash(byte[] data)
         {
             data.ThrowIfNull("data");
-            using (var sha1 = new SHA1Managed())
-            {
-                return Convert.ToBase64String(sha1.ComputeHash(data));
-            }
+            return Convert.ToBase64String(WinRTCrypto.HashAlgorithmProvider.OpenAlgorithm(HashAlgorithm.Sha1)
+                .HashData(data));
         }
 
         /// <summary>

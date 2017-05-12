@@ -2,8 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
+using PCLCrypto;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -255,48 +255,7 @@ namespace Sharp.Xmpp.Extensions
             foreach (string xmlns in list)
                 s.Append(xmlns + "<");
             byte[] bytes = Encoding.UTF8.GetBytes(s.ToString());
-            using (var sha1 = new SHA1Managed())
-                return Convert.ToBase64String(sha1.ComputeHash(bytes));
-        }
-
-        /// <summary>
-        /// Generates a BASE64-encoded hash from the specified input string
-        /// using the specified hashing algorithm.
-        /// </summary>
-        /// <param name="input">The input string to hash.</param>
-        /// <param name="algorithm">The hashing algorithm to use.</param>
-        /// <returns>The hashed input as a BASE64-encoded string.</returns>
-        /// <exception cref="ArgumentNullException">The input parameter or the
-        /// algorithm parameter is null.</exception>
-        /// <exception cref="NotSupportedException">The specified
-        /// algorithm is not supported.</exception>
-        private string Hash(string input, HashAlgorithm algorithm)
-        {
-            input.ThrowIfNull("input");
-            byte[] bytes = Encoding.UTF8.GetBytes(input);
-            return Convert.ToBase64String(algorithm.ComputeHash(bytes));
-        }
-
-        /// <summary>
-        /// Parses the 'hash' attribute of the 'c' element.
-        /// </summary>
-        /// <param name="algorithm">The value of the 'hash' attribute.</param>
-        /// <returns>An instance of the hashing algorithm to use or null if no
-        /// matching type could be found.</returns>
-        /// <exception cref="ArgumentNullException">The algorithm paramter
-        /// is null.</exception>
-        private HashAlgorithm ParseHashAlgorithm(string algorithm)
-        {
-            algorithm.ThrowIfNull("algorithm");
-            var dict = new Dictionary<string, Func<HashAlgorithm>>
-                (StringComparer.InvariantCultureIgnoreCase) {
-				{ "sha-1",   () => new SHA1Managed() },
-				{ "sha-256", () => new SHA256Managed() },
-				{ "sha-384", () => new SHA384Managed() },
-				{ "sha-512", () => new SHA512Managed() },
-				{ "md5",     () => new MD5CryptoServiceProvider() },
-			};
-            return dict.ContainsKey(algorithm) ? dict[algorithm].Invoke() : null;
+                return Convert.ToBase64String(WinRTCrypto.HashAlgorithmProvider.OpenAlgorithm(HashAlgorithm.Sha1).HashData(bytes));
         }
     }
 }

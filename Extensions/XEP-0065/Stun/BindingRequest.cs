@@ -1,6 +1,6 @@
 ﻿using Sharp.Xmpp.Extensions.Socks5;
 using System;
-using System.Security.Cryptography;
+using PCLCrypto;
 
 namespace Sharp.Xmpp.Extensions.Stun
 {
@@ -23,8 +23,8 @@ namespace Sharp.Xmpp.Extensions.Stun
         /// <summary>
         /// The crypto provider for generating random transaction ids.
         /// </summary>
-        private static RNGCryptoServiceProvider cryptoProvider =
-            new RNGCryptoServiceProvider();
+        private static IRandomNumberGenerator cryptoProvider =
+            NetFxCrypto.RandomNumberGenerator;
 
         /// <summary>
         /// The transaction id of the binding request.

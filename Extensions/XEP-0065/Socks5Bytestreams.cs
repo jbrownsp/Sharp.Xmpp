@@ -9,10 +9,10 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using PCLCrypto;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -343,14 +343,14 @@ namespace Sharp.Xmpp.Extensions
         private string Sha1(string s)
         {
             s.ThrowIfNull("s");
-            using (var sha1 = new SHA1Managed())
-            {
-                byte[] hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(s));
-                StringBuilder builder = new StringBuilder();
-                foreach (byte h in hash)
-                    builder.Append(h.ToString("x2"));
-                return builder.ToString();
-            }
+
+            var sha1 = WinRTCrypto.HashAlgorithmProvider.OpenAlgorithm(HashAlgorithm.Sha1);
+            byte[] hash = sha1.HashData(Encoding.UTF8.GetBytes(s));
+
+            StringBuilder builder = new StringBuilder();
+            foreach (byte h in hash)
+                builder.Append(h.ToString("x2"));
+            return builder.ToString();
         }
 
         /// <summary>

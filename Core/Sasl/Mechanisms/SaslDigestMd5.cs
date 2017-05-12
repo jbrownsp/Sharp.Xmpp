@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Specialized;
-using System.Security.Cryptography;
 using System.Text;
+using PCLCrypto;
+using HashAlgorithm = PCLCrypto.HashAlgorithm;
 
 namespace Sharp.Xmpp.Core.Sasl.Mechanisms
 {
@@ -245,20 +246,18 @@ namespace Sharp.Xmpp.Core.Sasl.Mechanisms
             Encoding enc = Encoding.GetEncoding("ISO-8859-1");
             string ncValue = "00000001", realm = challenge["realm"];
             // Construct A1.
-            using (var md5p = new MD5CryptoServiceProvider())
-            {
-                byte[] data = enc.GetBytes(username + ":" + realm + ":" + password);
-                data = md5p.ComputeHash(data);
-                string A1 = enc.GetString(data) + ":" + challenge["nonce"] + ":" +
-                    cnonce;
-                // Construct A2.
-                string A2 = "AUTHENTICATE:" + digestUri;
-                if (!"auth".Equals(challenge["qop"]))
-                    A2 = A2 + ":00000000000000000000000000000000";
-                string ret = MD5(A1, enc) + ":" + challenge["nonce"] + ":" + ncValue +
-                    ":" + cnonce + ":" + challenge["qop"] + ":" + MD5(A2, enc);
-                return MD5(ret, enc);
-            }
+            var md5p = WinRTCrypto.HashAlgorithmProvider.OpenAlgorithm(HashAlgorithm.Md5);
+            byte[] data = enc.GetBytes(username + ":" + realm + ":" + password);
+            data = md5p.HashData(data);
+            string A1 = enc.GetString(data) + ":" + challenge["nonce"] + ":" +
+                cnonce;
+            // Construct A2.
+            string A2 = "AUTHENTICATE:" + digestUri;
+            if (!"auth".Equals(challenge["qop"]))
+                A2 = A2 + ":00000000000000000000000000000000";
+            string ret = MD5(A1, enc) + ":" + challenge["nonce"] + ":" + ncValue +
+                ":" + cnonce + ":" + challenge["qop"] + ":" + MD5(A2, enc);
+            return MD5(ret, enc);
         }
 
         /// <summary>
@@ -278,7 +277,7 @@ namespace Sharp.Xmpp.Core.Sasl.Mechanisms
             if (encoding == null)
                 encoding = Encoding.UTF8;
             byte[] data = encoding.GetBytes(s);
-            byte[] hash = (new MD5CryptoServiceProvider()).ComputeHash(data);
+            byte[] hash = WinRTCrypto.HashAlgorithmProvider.OpenAlgorithm(HashAlgorithm.Md5).HashData(data);
             StringBuilder builder = new StringBuilder();
             foreach (byte h in hash)
                 builder.Append(h.ToString("x2"));

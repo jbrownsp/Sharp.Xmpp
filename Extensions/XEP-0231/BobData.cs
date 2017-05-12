@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
+using PCLCrypto;
 
 namespace Sharp.Xmpp.Extensions
 {
@@ -129,14 +129,12 @@ namespace Sharp.Xmpp.Extensions
         private string Sha1(byte[] data)
         {
             data.ThrowIfNull("data");
-            using (var sha1 = new SHA1Managed())
-            {
-                byte[] hash = sha1.ComputeHash(data);
-                StringBuilder builder = new StringBuilder();
-                foreach (byte h in hash)
-                    builder.Append(h.ToString("x2"));
-                return builder.ToString();
-            }
+            
+            byte[] hash = WinRTCrypto.HashAlgorithmProvider.OpenAlgorithm(HashAlgorithm.Sha1).HashData(data);
+            StringBuilder builder = new StringBuilder();
+            foreach (byte h in hash)
+                builder.Append(h.ToString("x2"));
+            return builder.ToString();
         }
     }
 }

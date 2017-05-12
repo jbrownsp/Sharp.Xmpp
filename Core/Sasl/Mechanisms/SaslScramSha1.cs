@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
+using PCLCrypto;
 
 namespace Sharp.Xmpp.Core.Sasl.Mechanisms
 {
@@ -305,10 +305,12 @@ namespace Sharp.Xmpp.Core.Sasl.Mechanisms
         {
             // The salt is sent by the server as a base64-encoded string.
             byte[] saltBytes = Convert.FromBase64String(salt);
-            using (var db = new Rfc2898DeriveBytes(password, saltBytes, count))
+
+            using (var key = WinRTCrypto.KeyDerivationAlgorithmProvider.OpenAlgorithm(KeyDerivationAlgorithm.Pbkdf2Sha1)
+                .CreateKey(Encoding.UTF8.GetBytes(password)))
             {
-                // Generate 20 key bytes, which is the size of the hash result of SHA-1.
-                return db.GetBytes(20);
+                var parameters = WinRTCrypto.KeyDerivationParameters.BuildForPbkdf2(saltBytes, count);
+                return WinRTCrypto.CryptographicEngine.DeriveKeyMaterial(key, parameters, 20);
             }
         }
 
@@ -322,9 +324,11 @@ namespace Sharp.Xmpp.Core.Sasl.Mechanisms
         /// <returns>The hashcode of the specified data input.</returns>
         private byte[] HMAC(byte[] key, byte[] data)
         {
-            using (var hmac = new HMACSHA1(key))
+            var hmac = WinRTCrypto.MacAlgorithmProvider.OpenAlgorithm(MacAlgorithm.HmacSha1);
+            using (var hasher = hmac.CreateHash(key))
             {
-                return hmac.ComputeHash(data);
+                hasher.Append(data);
+                return hasher.GetValueAndReset();
             }
         }
 
@@ -349,10 +353,7 @@ namespace Sharp.Xmpp.Core.Sasl.Mechanisms
         /// <returns>The hash value for the specified byte array.</returns>
         private byte[] H(byte[] data)
         {
-            using (var sha1 = new SHA1Managed())
-            {
-                return sha1.ComputeHash(data);
-            }
+            return WinRTCrypto.HashAlgorithmProvider.OpenAlgorithm(HashAlgorithm.Sha1).HashData(data);
         }
 
         /// <summary>
