@@ -5,19 +5,26 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 
 namespace OmemoDemo
 {
-    class InMemoryOmemoStore : IOmemoStore
+    class InMemoryOmemoStore : IOmemoStore, IDisposable
     {
+        [JsonProperty]
         private readonly Guid _currentDeviceId;
+        [JsonProperty]
         private readonly OmemoBundle _currentDeviceBundle;
-        private readonly Dictionary<Jid, List<Guid>> _devices = new Dictionary<Jid, List<Guid>>();
-        private readonly Dictionary<Guid, OmemoBundle> _bundles = new Dictionary<Guid, OmemoBundle>();
-        private readonly Dictionary<Guid, OlmSessionState> _sessionState = new Dictionary<Guid, OlmSessionState>();
+        [JsonProperty]
+        private readonly ConcurrentDictionary<Jid, ConcurrentBag<Guid>> _devices = new ConcurrentDictionary<Jid, ConcurrentBag<Guid>>();
+        [JsonProperty]
+        private readonly ConcurrentDictionary<Guid, OmemoBundle> _bundles = new ConcurrentDictionary<Guid, OmemoBundle>();
+        [JsonProperty]
+        private readonly ConcurrentDictionary<Guid, OlmSessionState> _sessionState = new ConcurrentDictionary<Guid, OlmSessionState>();
 
         public InMemoryOmemoStore(Guid currentDeviceId, OmemoBundle currentDeviceBundle)
         {
@@ -27,22 +34,17 @@ namespace OmemoDemo
 
         public void SaveDeviceId(Jid jid, Guid deviceId)
         {
-            if (!_devices.ContainsKey(jid))
-            {
-                _devices[jid] = new List<Guid>();
-            }
-
-            // prevent duplicate devices
-            if (!_devices[jid].Contains(deviceId))
-            {
-                _devices[jid].Add(deviceId);
-            }
+            // concurrent dictionary means 
+            _devices.TryAdd(jid, new ConcurrentBag<Guid>());
+            ((IProducerConsumerCollection<Guid>)_devices[jid]).TryAdd(deviceId);
         }
 
         public IList<Guid> GetDeviceIds(Jid jid)
         {
-            Debug.WriteLine(string.Format("[{0}] GetDeviceIds", Thread.CurrentThread.Name));
-            return _devices.ContainsKey(jid) ? _devices[jid] : new List<Guid>();
+            Debug.WriteLine($"[{Thread.CurrentThread.Name}] GetDeviceIds");
+
+            ConcurrentBag<Guid> bag;
+            return _devices.TryGetValue(jid, out bag) ? bag.ToList() : new List<Guid>();
         }
 
         public void SaveBundle(Guid deviceId, OmemoBundle bundle)
@@ -52,7 +54,8 @@ namespace OmemoDemo
 
         public OmemoBundle GetBundle(Guid deviceId)
         {
-            return _bundles.ContainsKey(deviceId) ? _bundles[deviceId] : null;
+            OmemoBundle bundle;
+            return _bundles.TryGetValue(deviceId, out bundle) ? bundle : null;
         }
 
         public void SaveSession(Guid deviceId, OlmSessionState sessionState)
@@ -62,7 +65,8 @@ namespace OmemoDemo
 
         public OlmSessionState GetSession(Guid deviceId)
         {
-            return _sessionState.ContainsKey(deviceId) ? _sessionState[deviceId] : null;
+            OlmSessionState state;
+            return _sessionState.TryGetValue(deviceId, out state) ? state : null;
         }
 
         public Guid GetCurrentDeviceId()
@@ -73,6 +77,16 @@ namespace OmemoDemo
         public OmemoBundle GetCurrentDeviceBundle()
         {
             return _currentDeviceBundle;
+        }
+
+        public void Dispose()
+        {
+            var settings = new JsonSerializerSettings
+            {
+                ContractResolver = new ConcurrentBagContractResolver(),
+            };
+            var json = JsonConvert.SerializeObject(this, settings);
+            File.WriteAllText(_currentDeviceId + ".json", json);
         }
     }
 
@@ -185,12 +199,18 @@ namespace OmemoDemo
 
             var currentDeviceBundle = OmemoBundle.Generate();
             currentDeviceBundle.DeviceId = deviceId;
-            var store = new InMemoryOmemoStore(deviceId, currentDeviceBundle);
-            store.SaveDeviceId(new Jid("openfire.local", username), deviceId);
-            store.SaveBundle(deviceId, currentDeviceBundle);
-            var client = new DemoClient("openfire.local", "openfire.local", username, password, recipient, store, deviceId);
-            client.Run();
 
+            var settings = new JsonSerializerSettings
+            {
+                ContractResolver = new ConcurrentBagContractResolver(),
+            };
+            using (var store = File.Exists(deviceId + ".json") ? JsonConvert.DeserializeObject<InMemoryOmemoStore>(File.ReadAllText(deviceId + ".json"), settings) : new InMemoryOmemoStore(deviceId, currentDeviceBundle))
+            {
+                store.SaveDeviceId(new Jid("openfire.local", username), deviceId);
+                store.SaveBundle(deviceId, currentDeviceBundle);
+                var client = new DemoClient("openfire.local", "openfire.local", username, password, recipient, store, deviceId);
+                client.Run();
+            }
             return;            
 
             /*
