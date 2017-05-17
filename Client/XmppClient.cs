@@ -2076,6 +2076,8 @@ namespace Sharp.Xmpp.Client
                     if (im != null)
                         im.Close();
                     im = null;
+
+                    OmemoStore = null;
                 }
                 // Get rid of unmanaged resources.
             }
