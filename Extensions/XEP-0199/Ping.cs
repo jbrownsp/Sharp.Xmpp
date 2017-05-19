@@ -85,11 +85,11 @@ namespace Sharp.Xmpp.Extensions
         public TimeSpan PingEntity(Jid jid)
         {
             jid.ThrowIfNull("jid");
-            if (!ecapa.Supports(jid, Extension.Ping))
+            /*if (!ecapa.Supports(jid, Extension.Ping))
             {
                 throw new NotSupportedException("The XMPP entity does not support the " +
                     "'Ping' extension.");
-            }
+            }*/
             DateTime start = DateTime.Now;
             Iq iq = im.IqRequest(IqType.Get, jid, im.Jid,
                 Xml.Element("ping", "urn:xmpp:ping"));
