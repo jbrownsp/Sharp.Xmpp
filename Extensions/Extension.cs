@@ -163,6 +163,8 @@
         /// <summary>
         /// An extension for multi-end message and object encrpytion.
         /// </summary>
-        Omemo
+        Omemo,
+
+        StreamManagement
     }
 }

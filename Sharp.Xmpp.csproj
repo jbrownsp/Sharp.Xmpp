@@ -100,7 +100,15 @@
   <ItemGroup>
     <Compile Include="Client\FileTransferSettings.cs" />
     <Compile Include="Client\XmppClient.cs" />
+    <Compile Include="Core\AnswerEventArgs.cs" />
+    <Compile Include="Core\Enable.cs" />
+    <Compile Include="Core\Enabled.cs" />
+    <Compile Include="Core\EnabledEventArgs.cs" />
     <Compile Include="Core\ErrorEventArgs.cs" />
+    <Compile Include="Core\Answer.cs" />
+    <Compile Include="Core\Request.cs" />
+    <Compile Include="Core\RequestEventArgs.cs" />
+    <Compile Include="Core\StreamManagementStanza.cs" />
     <Compile Include="Extensions\CustomExtension\CustomIqExtension.cs" />
     <Compile Include="Extensions\CustomExtension\CustomIqRequestDelegate.cs" />
     <Compile Include="Extensions\XEP-0004\DataForms.cs" />
