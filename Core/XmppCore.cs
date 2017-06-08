@@ -137,10 +137,6 @@ namespace Sharp.Xmpp.Core
         /// </summary>
         private CancellationTokenSource cancelDispatch = new CancellationTokenSource();
 
-        private bool streamManagementEnabled = false;
-        private uint streamManagementAnswerCounter = 0;
-        private uint streamManagementRequestCounter = 0;
-
         /// <summary>
         /// The hostname of the XMPP server to connect to.
         /// </summary>
@@ -491,27 +487,6 @@ namespace Sharp.Xmpp.Core
             {
                 throw new XmppException("The XML stream could not be negotiated.", e);
             }
-        }
-
-        public void TryEnableStreamManagement()
-        {
-            Send(new Enable());
-        }
-
-        private void SetStreamManagementEnabled()
-        {
-            streamManagementEnabled = true;
-        }
-
-        private void SendStreamMangementAnswer()
-        {
-            Send(new Answer { H = ++streamManagementAnswerCounter });
-        }
-
-        private void SendStreamManagementRequest()
-        {
-            ++streamManagementRequestCounter;
-            Send(new Request());
         }
 
         /// <summary>
@@ -1161,7 +1136,7 @@ namespace Sharp.Xmpp.Core
         /// is null.</exception>
         /// <exception cref="IOException">There was a failure while writing
         /// to the network.</exception>
-        public void Send(XmlElement element)
+        private void Send(XmlElement element)
         {
             element.ThrowIfNull("element");
             Send(element.ToXmlString());
@@ -1174,7 +1149,7 @@ namespace Sharp.Xmpp.Core
         /// <exception cref="ArgumentNullException">The xml parameter is null.</exception>
         /// <exception cref="IOException">There was a failure while writing to
         /// the network.</exception>
-        public void Send(string xml)
+        private void Send(string xml)
         {
             xml.ThrowIfNull("xml");
 			Debug.WriteLine("XmppCore sending xml");
@@ -1188,7 +1163,7 @@ namespace Sharp.Xmpp.Core
                 try
                 {
                     stream.Write(buf, 0, buf.Length);
-                    if (debugStanzas) System.Diagnostics.Debug.WriteLine("SENT: " + xml);
+                    if (debugStanzas) System.Diagnostics.Debug.WriteLine(xml);
                 }
                 catch (IOException e)
                 {
@@ -1206,15 +1181,10 @@ namespace Sharp.Xmpp.Core
         /// <exception cref="ArgumentNullException">The stanza parameter is null.</exception>
         /// <exception cref="IOException">There was a failure while writing to
         /// the network.</exception>
-        public void Send(Stanza stanza)
+        private void Send(Stanza stanza)
         {
             stanza.ThrowIfNull("stanza");
             Send(stanza.ToString());
-
-            if (streamManagementEnabled && (stanza is Iq || stanza is Presence || stanza is Message))
-            {
-                SendStreamManagementRequest();
-            }
         }
 
         /// <summary>
@@ -1257,7 +1227,7 @@ namespace Sharp.Xmpp.Core
             {
                 while (true)
                 {
-                    XmlElement elem = parser.NextElement("iq", "message", "presence", "enabled", "a", "r");
+                    XmlElement elem = parser.NextElement("iq", "message", "presence");
                     // Parse element and dispatch.
                     switch (elem.Name)
                     {
@@ -1275,23 +1245,6 @@ namespace Sharp.Xmpp.Core
 
                         case "presence":
                             stanzaQueue.Add(new Presence(elem));
-                            break;
-
-                        // XEP-0198 - Stream Management 
-                        case "enabled":
-                            stanzaQueue.Add(new Enabled(elem));
-                            break;
-
-                        case "a":
-                            stanzaQueue.Add(new Answer(elem));
-                            break;
-
-                        case "r":
-                            stanzaQueue.Add(new Request(elem));
-                            break;
-
-                        default:
-                            System.Diagnostics.Debug.WriteLine("UNKNOWN ELEMENT: " + elem.ToXmlString());
                             break;
                     }
                 }
@@ -1330,17 +1283,13 @@ namespace Sharp.Xmpp.Core
                 try
                 {
                     Stanza stanza = stanzaQueue.Take(cancelDispatch.Token);
-                    if (debugStanzas) System.Diagnostics.Debug.WriteLine("RECVD: " + stanza.ToString());
+                    if (debugStanzas) System.Diagnostics.Debug.WriteLine(stanza.ToString());
                     if (stanza is Iq)
                         Iq.Raise(this, new IqEventArgs(stanza as Iq));
                     else if (stanza is Message)
                         Message.Raise(this, new MessageEventArgs(stanza as Message));
                     else if (stanza is Presence)
                         Presence.Raise(this, new PresenceEventArgs(stanza as Presence));
-                    else if (stanza is Enabled)
-                        SetStreamManagementEnabled();
-                    else if (stanza is Request)
-                        SendStreamMangementAnswer();
                 }
                 catch (OperationCanceledException)
                 {
