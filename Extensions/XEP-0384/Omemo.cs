@@ -213,8 +213,15 @@ namespace Sharp.Xmpp.Extensions
             var payload = OlmUtils.Encrypt(aesKey, aesIv, Encoding.UTF8.GetBytes(message));
 
             var encrypted = Xml.Element("encrypted", "urn:xmpp:omemo:0");
+
+			// header
+			var header = Xml.Element("header");
+			header.Attr("sid", Store.GetCurrentDeviceId().ToString());
+
+			// iv
+			header.Child(Xml.Element("iv").Text(Convert.ToBase64String(aesIv)));
             
-            // headers
+            // keys
             foreach (var recipient in recipients)
             {
 				Debug.WriteLine("recipient: " + recipient.ToString());
@@ -223,14 +230,6 @@ namespace Sharp.Xmpp.Extensions
 
                 foreach (var deviceId in deviceIds)
                 {
-					// header
-					var header = Xml.Element("header");
-					header.Attr("sid", Store.GetCurrentDeviceId().ToString());
-
-					// iv
-					header.Child(Xml.Element("iv").Text(Convert.ToBase64String(aesIv)));
-
-					// key
 					Debug.WriteLine("deviceid: " + deviceId.ToString());
                     var sessionState = Store.GetSession(deviceId);
                     var prekey = false;
@@ -279,11 +278,11 @@ namespace Sharp.Xmpp.Extensions
                         key.Text(Convert.ToBase64String(session.CreateMessage(aesKey)));
                     }
 
-                    header.Child(key);
-                    encrypted.Child(header);
+					header.Child(key);
                 }
             }
-
+            
+			encrypted.Child(header);
             encrypted.Child(Xml.Element("payload").Text(Convert.ToBase64String(payload)));
 
             return encrypted.ToXmlString();
