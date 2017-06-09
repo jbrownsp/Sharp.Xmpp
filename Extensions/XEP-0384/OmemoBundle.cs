@@ -23,7 +23,7 @@ namespace Sharp.Xmpp.Extensions
             bundle.IdentityKey = KeyPair.Generate();
             bundle.DeviceId = Guid.NewGuid();
 
-            foreach (var i in Enumerable.Range(0, 100))
+            foreach (var i in Enumerable.Range(0, 10))
             {
                 bundle.PreKeys.Add(KeyPair.Generate());
             }
