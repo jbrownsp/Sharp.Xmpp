@@ -297,7 +297,7 @@ namespace Sharp.Xmpp.Extensions
             {
                 AesKey = aesKey,
                 AesIv = aesIv,
-                File = OlmUtils.Encrypt(file, aesKey, aesIv),
+                File = OlmUtils.Encrypt(aesKey, aesIv, file),
             }; 
         }
 
