@@ -941,9 +941,9 @@ namespace Sharp.Xmpp.Client
             return omemo.Encrypt(recipients, body, aesKey, aesIv);
         }
 
-        public EncryptedFile EncryptFile(byte[] file)
+        public EncryptedFile EncryptFile(byte[] file, byte[] aesKey = null, byte[] aesIv = null)
         {
-            return omemo.EncryptFile(file);
+            return omemo.EncryptFile(file, aesKey, aesIv);
         }
 
         public byte[] DecryptFile(byte[] file, byte[] aesKey, byte[] aesIv)
